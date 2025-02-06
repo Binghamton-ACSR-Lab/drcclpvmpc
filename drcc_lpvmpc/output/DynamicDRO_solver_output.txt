@@ -1,0 +1,2 @@
+OPTIMIZED SOLVER FAILED
+Solve optimal problem fails

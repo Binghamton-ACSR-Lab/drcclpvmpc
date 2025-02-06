@@ -1,0 +1,1 @@
+from drcc_lpvmpc.dynamics.lpvdynamics import BicycleDynamics

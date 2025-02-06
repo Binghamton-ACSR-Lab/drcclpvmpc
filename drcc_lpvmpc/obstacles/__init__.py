@@ -1,0 +1,1 @@
+from drcc_lpvmpc.obstacles.obstacle_shape import Rectangle_obs

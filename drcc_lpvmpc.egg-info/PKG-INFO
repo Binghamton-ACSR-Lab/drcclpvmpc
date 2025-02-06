@@ -1,0 +1,44 @@
+Metadata-Version: 2.1
+Name: drcc_lpvmpc
+Version: 0.0.0
+Summary: Linear Parameters Varying Distributional Robust Chance Constraint (DRCC) Optimization
+Author-email: Shiming Fang <sfang10@binghamton.edu>
+License: TODO
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: numpy==1.24.4
+Requires-Dist: casadi==3.6.7
+Requires-Dist: matplotlib==3.1.2
+Requires-Dist: proxsuite
+Requires-Dist: osqp
+Requires-Dist: shapely
+
+# Linear Parameters Varying Distributional Robust Optimization
+
+Test part
+
+## Installation
+
+It is recommended to create a new conda environment:
+
+```
+conda create --name lpvdro python=3.8.19
+conda activate lpvdro
+```
+
+To install lpvdro:
+
+```
+cd lpvdro/
+pip install -e .
+```
+
+## Run lpvdro
+
+```
+cd main
+python orca_non_noise_dynamics_dro.py
+```
+
+## mpc planner class located in mpc/dynamics_drompc_sparse.py

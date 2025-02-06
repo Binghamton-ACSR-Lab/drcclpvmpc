@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drcc_lpvmpc"
+authors = [
+    {name = "Shiming Fang", email = "sfang10@binghamton.edu"},
+]
+description = "Linear Parameters Varying Distributional Robust Chance Constraint (DRCC) Optimization"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "TODO"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "numpy==1.24.4",
+    "casadi==3.6.7",
+    "matplotlib==3.1.2",
+    "proxsuite",
+    "osqp",
+    "shapely",
+    "pyyaml"
+]
+dynamic = ["version"]
