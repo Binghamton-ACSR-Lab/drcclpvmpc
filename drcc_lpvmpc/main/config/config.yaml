@@ -1,5 +1,5 @@
 xylabel_fontsize : 20 # refer to the font size of xy label in the figure
-legend_fontsize : 20 # refer to the legend size in the figure
+legend_fontsize : 19 # refer to the legend size in the figure
 xytick_size : 20 # refer to the tick size in the figure
 
 save_figure : true # set true if want to save figure, the figure saved in /outputFigure
@@ -10,5 +10,5 @@ plot_error : false # set to true if want to plot the state noise, the noise cont
 draw_safe_region : true # set to false if you don't want to see the safety region of the obs avoidance defined in the paper.
 test_debug : false # by defalt, set it to false, true value will active the debug section and deactive the main loop.
 
-useDRCC : false # when set to true, the mpc use drcc-lpvmpc, false will make the planner use lpvmpc only
+useDRCC : true # when set to true, the mpc use drcc-lpvmpc, false will make the planner use lpvmpc only
 add_disturbance : true # set to true if you want to add random additive noise to the simulation to simulate other type of errors (e.g. localization, sensor errors, etc.), set to false will only make the model errors into consideration.
