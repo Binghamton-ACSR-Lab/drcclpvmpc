@@ -4,3 +4,4 @@ matplotlib==3.1.2
 proxsuite
 osqp
 shapely
+pyyaml

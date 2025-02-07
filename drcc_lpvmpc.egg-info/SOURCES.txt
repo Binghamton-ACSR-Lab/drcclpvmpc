@@ -9,7 +9,7 @@ drcc_lpvmpc.egg-info/top_level.txt
 drcc_lpvmpc/dynamics/__init__.py
 drcc_lpvmpc/dynamics/lpvdynamics.py
 drcc_lpvmpc/dynamics/model.py
-drcc_lpvmpc/main/orca_non_noise_dynamics_dro.py
+drcc_lpvmpc/main/drcc_lpvmpc_main.py
 drcc_lpvmpc/mpc/__init__.py
 drcc_lpvmpc/mpc/dynamics_drccmpc_rhunc.py
 drcc_lpvmpc/mpc/model_noise.py
