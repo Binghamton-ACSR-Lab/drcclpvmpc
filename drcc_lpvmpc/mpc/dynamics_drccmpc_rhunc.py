@@ -148,7 +148,7 @@ class BicycleDynamicsDRCC:
         self.obs_cons_sa = self.path_ptr_.tau_to_s_lookup(self.obs_cons_atau)
         self.obs_cons_s0 = self.obs_cons_sa - self.max_vx*self.dt*self.horizon*2
 
-        self.obs_cons_sb = self.path_ptr_.tau_to_s_lookup(self.obs_cons_atau)
+        self.obs_cons_sb = self.path_ptr_.tau_to_s_lookup(self.obs_cons_btau)
         self.obs_cons_s1 = self.obs_cons_sb + self.max_vx*self.dt*self.horizon*2
         # print("obs cons s:",self.obs_cons_s0)
         self.obs_cons_tau0 = self.path_ptr_.s_to_tau_lookup(self.obs_cons_s0)

@@ -307,15 +307,15 @@ if draw_safe_region:
 			safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
 
 		else:
-			safe_ataus = ca.linspace(test_a_tau[i],test_tau_0[i],10).T
+			safe_ataus = ca.linspace(test_a_tau[i],test_tau_0[i],100).T
 
-			safe_ans = ca.linspace(test_a_n[i],0,10).T
+			safe_ans = ca.linspace(test_a_n[i],0,100).T
 
 			safe_axys = track_ptr.f_taun_to_xy(safe_ataus,safe_ans)
 
-			safe_btaus = ca.linspace(test_tau_1[i],test_b_tau[i],10).T
+			safe_btaus = ca.linspace(test_tau_1[i],test_b_tau[i],100).T
 
-			safe_bns = ca.linspace(0,test_b_n[i],10).T
+			safe_bns = ca.linspace(0,test_b_n[i],100).T
 
 			safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
 
