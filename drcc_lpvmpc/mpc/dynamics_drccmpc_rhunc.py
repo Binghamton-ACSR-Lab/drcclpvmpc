@@ -13,7 +13,7 @@ from drcc_lpvmpc.mpc.model_noise import Model_noise
 
 
 class BicycleDynamicsDRCC:
-    def __init__(self,path_ptr,center_ptr,obs_map,current_state,dt,horizon,track_with,fix_noise) -> None:
+    def __init__(self,path_ptr,center_ptr,obs_map,current_state,dt,horizon,track_with,fix_noise,control_='acc') -> None:
         self.initialize = True
         self.init_vxy = True
 
@@ -22,7 +22,7 @@ class BicycleDynamicsDRCC:
         script = os.path.dirname(__file__)
 
         self.output_log = os.path.join(os.path.split(script)[0],'output','DynamicDRO_solver_output.txt')
-        params = ORCA()
+        params = ORCA(control=control_)
         self.n_states = 6 # x, y, phi, vx, vy, omega
         self.n_inputs = 2 # steer, acc
         """	specify model params here
@@ -43,6 +43,14 @@ class BicycleDynamicsDRCC:
 
         self.Caf = params['Caf']
         self.Car = params['Car']
+        
+        self.Cm1 = params['Cm1']
+        self.Cm2 = params['Cm2']
+        self.Cr0 = params['Cr0']
+        self.Cd = params['Cd']
+        
+        self.approx = params['approx']
+        
 
         self.g = params['g'] # gravity acc
         self.d = params['d']
@@ -371,6 +379,7 @@ class BicycleDynamicsDRCC:
 
         # alphaf = self.p_delta - (self.p_vy+self.lf*self.p_omega)/self.p_vx
         # alphar = (self.lr*self.p_omega-self.p_vy)/self.p_vx
+        A33 = self.A33()
         A34 = self.A34()
         A35 = self.A35()
         A44 = self.A44()
@@ -379,6 +388,7 @@ class BicycleDynamicsDRCC:
         A55 = self.A55()
 
         B30 = self.B30()
+        B31 = self.B31()
         B40 = self.B40()
         B50 = self.B50()
         ##################################### define objective function ################################
@@ -391,32 +401,62 @@ class BicycleDynamicsDRCC:
 
         A_ls = []
         B_ls = []
+        C_ls = []
+        
+        C_k = ca.DM.zeros(self.n_states,1)
+        C_k[3,0] = -self.Cr0/self.mass
+        C_k = C_k * self.dt
 
         for i in range(self.horizon):
-            A_i = ca.DM.zeros(self.n_states,self.n_states)
-            A_i[0,3] = ca.cos(self.p_phi[0,i])
-            A_i[0,4] = -ca.sin(self.p_phi[0,i])
-            A_i[1,3] = ca.sin(self.p_phi[0,i])
-            A_i[1,4] = ca.cos(self.p_phi[0,i])
-            A_i[2,5] = 1
-            A_i[3,4] = A34[0,i]
-            A_i[3,5] = A35[0,i]
-            A_i[4,4] = A44[0,i]
-            A_i[4,5] = A45[0,i]
-            A_i[5,4] = A54[0,i]
-            A_i[5,5] = A55[0,i]
+            if self.approx:
+                A_i = ca.DM.zeros(self.n_states,self.n_states)
+                A_i[0,3] = ca.cos(self.p_phi[0,i])
+                A_i[0,4] = -ca.sin(self.p_phi[0,i])
+                A_i[1,3] = ca.sin(self.p_phi[0,i])
+                A_i[1,4] = ca.cos(self.p_phi[0,i])
+                A_i[2,5] = 1
+                A_i[3,4] = A34[0,i]
+                A_i[3,5] = A35[0,i]
+                A_i[4,4] = A44[0,i]
+                A_i[4,5] = A45[0,i]
+                A_i[5,4] = A54[0,i]
+                A_i[5,5] = A55[0,i]
 
-            B_i = ca.DM.zeros(self.n_states,self.n_inputs)
-            B_i[3,1] = 1
-            B_i[3,0] = B30[0,i]
-            B_i[4,0] = B40[0,i]
-            B_i[5,0] = B50[0,i]
+                B_i = ca.DM.zeros(self.n_states,self.n_inputs)
+                B_i[3,1] = 1
+                B_i[3,0] = B30[0,i]
+                B_i[4,0] = B40[0,i]
+                B_i[5,0] = B50[0,i]
 
-            A_i = ca.diag(ca.DM.ones(self.n_states)) + A_i*self.dt
-            B_i = B_i * self.dt
+                A_i = ca.diag(ca.DM.ones(self.n_states)) + A_i*self.dt
+                B_i = B_i * self.dt
+            else:
+                A_i = ca.DM.zeros(self.n_states,self.n_states)
+                A_i[0,3] = ca.cos(self.p_phi[0,i])
+                A_i[0,4] = -ca.sin(self.p_phi[0,i])
+                A_i[1,3] = ca.sin(self.p_phi[0,i])
+                A_i[1,4] = ca.cos(self.p_phi[0,i])
+                A_i[2,5] = 1
+                A_i[3,3] = A33[0,i]
+                A_i[3,4] = A34[0,i]
+                A_i[3,5] = A35[0,i]
+                A_i[4,4] = A44[0,i]
+                A_i[4,5] = A45[0,i]
+                A_i[5,4] = A54[0,i]
+                A_i[5,5] = A55[0,i]
+
+                B_i = ca.DM.zeros(self.n_states,self.n_inputs)
+                B_i[3,1] = B31[0,i]
+                B_i[3,0] = B30[0,i]
+                B_i[4,0] = B40[0,i]
+                B_i[5,0] = B50[0,i]
+
+                A_i = ca.diag(ca.DM.ones(self.n_states)) + A_i*self.dt
+                B_i = B_i * self.dt
 
             A_ls.append(A_i) # A0, A1, ...
             B_ls.append(B_i) # B0, B1, ...
+            C_ls.append(C_k)
 
         E_ls = []
         for i in range(self.horizon): # this for the steps
@@ -451,7 +491,9 @@ class BicycleDynamicsDRCC:
             Hn[i*self.n_states:(i+1)*self.n_states,i*self.n_states:(i+1)*self.n_states] = np.eye(self.n_states)
 
         # print("Hn ls :",Hn_ls)
-
+        C_N = ca.DM.zeros(self.n_states*self.horizon,1)
+        for i in range(self.horizon):
+            C_N[i*self.n_states:(i+1)*self.n_states,0] = C_ls[i]
         ############################ update objective function ############################
 
         ref_state = np.array(ca.vertcat(self.reference_x,self.reference_y,self.reference_phi,
@@ -475,7 +517,12 @@ class BicycleDynamicsDRCC:
             Fn[i,0] = 0
 
         # xn_obj = ca.dot(Dn*(Ln@z-ref_state),Dn*(Ln@z-ref_state)) + ca.dot(Fn*z,Fn*z)
-        xn_obj = ca.dot(Dn*(Ln@z-ref_state),Dn*(Ln@z-ref_state))
+        if self.approx:
+            xn_obj = ca.dot(Dn*(Ln@z-ref_state),Dn*(Ln@z-ref_state))
+        else:
+
+            xn_obj = ca.dot(Dn*(Ln@z+Hn@C_N-ref_state),Dn*(Ln@z+Hn@C_N-ref_state))
+            
 
         use_chance_covx = False # specify whether or not to use CvaR to convert the state bounds of vx
         use_chance_covy = False # specify whether or not to use CvaR to convert the state bounds of vy
@@ -507,6 +554,9 @@ class BicycleDynamicsDRCC:
                 # qm = opti.variable(1,1) # min vx
 
                 dDLnZn = dn@Dn@Ln@z
+                
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 dDHn = dn@Dn@Hn
 
                 casj_samples = ca.DM.zeros(self.n_states*self.horizon,self.noise_arr.shape[0])
@@ -544,6 +594,8 @@ class BicycleDynamicsDRCC:
                 Dn[i,i*self.n_states+3] = 1
 
             DLnZn = Dn@Ln@z
+            if not self.approx:
+                DLnZn += Dn@Hn@C_N
 
             opti.subject_to(opti.bounded(self.min_vx,DLnZn,self.max_vx))
 
@@ -679,6 +731,8 @@ class BicycleDynamicsDRCC:
                 q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 dDHn = dn@Dn@Hn
 
                 casj_samples = ca.DM.zeros(self.n_states*self.horizon,self.noise_arr.shape[0])
@@ -710,6 +764,8 @@ class BicycleDynamicsDRCC:
                 # q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 # dDHn = dn@Dn@Hn
 
                 opti.subject_to(dDLnZn - c11[i+1] <= 0)
@@ -730,6 +786,8 @@ class BicycleDynamicsDRCC:
                 q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 dDHn = dn@Dn@Hn
 
                 casj_samples = ca.DM.zeros(self.n_states*self.horizon,self.noise_arr.shape[0])
@@ -761,6 +819,8 @@ class BicycleDynamicsDRCC:
                 # q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 # dDHn = dn@Dn@Hn
 
                 opti.subject_to(dDLnZn - c12[i+1] <= 0)
@@ -783,6 +843,8 @@ class BicycleDynamicsDRCC:
                 q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 dDHn = dn@Dn@Hn
 
                 casj_samples = ca.DM.zeros(self.n_states*self.horizon,self.noise_arr.shape[0])
@@ -814,6 +876,8 @@ class BicycleDynamicsDRCC:
                 # q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 # dDHn = dn@Dn@Hn
 
                 opti.subject_to(dDLnZn - c13[i+1] <= 0)
@@ -834,6 +898,8 @@ class BicycleDynamicsDRCC:
                 q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 dDHn = dn@Dn@Hn
 
                 casj_samples = ca.DM.zeros(self.n_states*self.horizon,self.noise_arr.shape[0])
@@ -865,6 +931,8 @@ class BicycleDynamicsDRCC:
                 # q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 # dDHn = dn@Dn@Hn
 
                 opti.subject_to(dDLnZn - c14[i+1] <= 0)
@@ -893,6 +961,8 @@ class BicycleDynamicsDRCC:
                     gamma_next = gamma
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 dDHn = dn@Dn@Hn
 
                 casj_samples = ca.DM.zeros(self.n_states*self.horizon,self.noise_arr.shape[0])
@@ -936,6 +1006,8 @@ class BicycleDynamicsDRCC:
                 # q = opti.variable(1,1)
 
                 dDLnZn = dn@Dn@Ln@z
+                if not self.approx:
+                    dDLnZn += dn@Dn@Hn@C_N
                 # dDHn = dn@Dn@Hn
 
                 opti.subject_to(dDLnZn + c3[0,i+1] <= 0)
@@ -964,8 +1036,10 @@ class BicycleDynamicsDRCC:
         
         # Adu = Adu.sparsity()
         # Aau = Aau.sparsity()
-
-        opti.subject_to(opti.bounded(self.min_acc, Aau@z, self.max_acc))
+        if self.approx:
+            opti.subject_to(opti.bounded(self.min_acc, Aau@z, self.max_acc))
+        else:
+            opti.subject_to(opti.bounded(-0.1, Aau@z, 1.0))
         opti.subject_to(opti.bounded(self.min_steer, Adu@z , self.max_steer))
 
         ###################################### minimize the objective function ##########################################
@@ -1244,6 +1318,9 @@ class BicycleDynamicsDRCC:
 
         return self.lr*self.Car/self.Iz
     
+    def A33(self):
+        return -self.Cd*self.p_vx/self.mass
+    
     def A34(self):
         betaf = self.betaf()
         return betaf*ca.sin(self.p_delta)/self.p_vx
@@ -1278,6 +1355,9 @@ class BicycleDynamicsDRCC:
     def B30(self):
         betaf = self.betaf()
         return -betaf * ca.sin(self.p_delta)
+    
+    def B31(self):
+        return (self.Cm1-self.Cm2*self.p_vx)/self.mass
     
     def B40(self):
         betaf = self.betaf()

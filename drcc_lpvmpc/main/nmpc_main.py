@@ -14,11 +14,11 @@ import yaml
 
 
 import drcc_lpvmpc.raceline_formulation.utils.utils as utils
-from drcc_lpvmpc.mpc.dynamics_drccmpc_rhunc import BicycleDynamicsDRCC
+from drcc_lpvmpc.mpc.dynamics_nmpc import BicycleDynamicsNMPC
 
 SAMPLING_TIME = 0.02
 HORIZON = 6
-SIM_TIME = 15
+SIM_TIME = 40
 script_dir = os.path.dirname(__file__)
 config_file = os.path.join(script_dir,"config","config.yaml")
 
@@ -39,13 +39,13 @@ draw_safe_region = config['draw_safe_region']
 test_debug = config['test_debug']
 useDRCC = config['useDRCC']
 add_disturbance = config['add_disturbance']
-control_type = 'pwm'
+
 #########################################################################################################################
 ##################################################### ENVIRONMENT SETUP #################################################
 #########################################################################################################################
 
 # load vehicle parameters
-params = ORCA(control=control_type)
+params = ORCA()
 model = BicycleDynamics(**params)
 
 #####################################################################
@@ -78,7 +78,6 @@ n_steps = int(SIM_TIME/Ts)
 n_states = model.n_states
 n_inputs = model.n_inputs
 horizon = HORIZON
-approx = model.approx
 
 # initialize
 states = np.zeros([n_states, n_steps+1])
@@ -129,7 +128,7 @@ ax = plt.gca()
 LnS, = ax.plot(states[0,0], states[1,0], 'r', alpha=1,lw=2,label="Trajectory")
 LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1,label="Local Reference")
 LnP, = ax.plot(float(current_pos[0]), float(current_pos[1]), 'g', marker='o', alpha=0.5, markersize=5,label="current position")
-LnH, = ax.plot(hstates[0], hstates[1], '-g', marker='o', markersize=1, lw=0.5)
+# LnH, = ax.plot(hstates[0], hstates[1], '-g', marker='o', markersize=1, lw=0.5)
 LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5,label="Ground Truth Path")
 
 # LnS, = ax.plot(states[0,0], states[1,0], 'r', alpha=1,lw=2,label="Trajectory")
@@ -214,7 +213,7 @@ Rec_obs = Rectangle_obs(rec_obsxy,width,length,angles,side_avoid)
 ######################################## END OF ENVIRONMENT SETUP ###########################################################
 #############################################################################################################################
 
-drompc = BicycleDynamicsDRCC(track_ptr,center_ptr,Rec_obs,current_pos,SAMPLING_TIME,horizon,track.track_width/2,use_fixed_noise,control_type)
+nmpc = BicycleDynamicsNMPC(track_ptr,center_ptr,Rec_obs,current_pos,SAMPLING_TIME,horizon,track.track_width/2)
 
 #####################################################################################################################################
 ############################################################# test section ##########################################################
@@ -224,63 +223,29 @@ if test_debug:
 	x0_test = np.array(current_pos)
 	print("x0 :",x0_test)
 	# dro_success,dro_z0,dro_control = drompc.get_Updated_local_path(current_pos)
-	drompc.make_plan(current_pos)
-	# dro_z0 = np.array(dro_z0).squeeze()
-	# print("dro z0 :",dro_z0)
-	# dro_control = np.array(dro_control)
-	# print("dro control :",dro_control)
-	# lpv_pvx, lpv_pvy, lpv_pphi, lpv_pdelta = drompc.get_old_p_param()
-	# lpv_pred_x = model.LPV_states(dro_z0,dro_control,lpv_pvx,lpv_pvy,lpv_pphi,lpv_pdelta,SAMPLING_TIME)
-	# new_pvx = lpv_pred_x[3,1:]
-	# new_pvy = lpv_pred_x[4,1:]
-	# new_pphi = lpv_pred_x[2,1:]
-	# drompc.update_new_p_param(new_pvx,new_pvy,new_pphi)
-	# print("lpv states :",lpv_pred_x)
-	# ax.plot(lpv_pred_x[0,:],lpv_pred_x[1,:],label="lpv linear path")
-	# de_lpv_x = [-5.1130751320563850e-01,-4.6341522574699395e-01, -4.1357302194238971e-01, -3.7236311774105491e-01, -3.2012574718937004e-01, -3.0673791356108887e-01, 1.3498735490743303e+02]
-	# de_lpv_y = [ 8.2102891808320744e-01,  7.8245268183290939e-01 , 7.4473973276307437e-01 ,6.9632674041619214e-01 , 7.3322066879491954e-01,  7.2313047450243850e-01, 2.1921902380423745e+02]
-	# de_lpv_x = np.array(de_lpv_x).squeeze()
-	# de_lpv_y = np.array(de_lpv_y).squeeze()
-	# ax.plot(de_lpv_x,de_lpv_y,label = "test lpv track")
-	# print(dro_path)
-	# dro_x = np.array(dro_path[0]).squeeze()
-	# dro_y = np.array(dro_path[1]).squeeze()
-	# dro_phi = np.array(dro_path[2]).squeeze()
-	# dro_vx = np.array(dro_path[3]).squeeze()
-	# dro_vy = np.array(dro_path[4]).squeeze()
-	# dro_omega = np.array(dro_path[5]).squeeze()
-	# dro_delta = np.array(dro_control[0]).squeeze()
-	# dro_acc = np.array(dro_control[1]).squeeze()
-	# dx = np.cos(dro_phi)
-	# dy = np.sin(dro_phi)
-	# ref_xy = drompc.get_reference_path()
-	# ref_phi = drompc.get_reference_phi()
-	# ref_x = np.array(ref_xy[0,:]).transpose()
-	# ref_y = np.array(ref_xy[1,:]).transpose()
-	# ref_phi = np.array(ref_phi).transpose()
-	# drex = np.cos(ref_phi)
-	# drey = np.sin(ref_phi)
-	# dro_control = np.stack((dro_delta,dro_acc))
-	# print("dro control shape :",dro_control.shape)
-	# dro_states = np.stack((dro_x,dro_y,dro_phi,dro_vx,dro_vy,dro_omega))
-	# print("dro states :",dro_states.shape)
-	# sim_x = model.sim_states(x0_test,dro_control,SAMPLING_TIME)
-	# model_diff = sim_x - dro_states
-	# model_diff = model_diff[:,:-1]
-	# drompc.update_model_noise(model_diff,x0_test,dro_delta,dro_acc)
-	# ax.plot(dro_x,dro_y,label="dro path")
-	# ax.plot(sim_x[0,:],sim_x[1,:],label="non linear path")
+	debug_result, opz, opu = nmpc.get_Updated_local_path(current_pos)
+	op_x = np.array(opz[0,:]).squeeze().tolist()
+	op_y = np.array(opz[1,:]).squeeze().tolist()
+	op_phi = np.array(opz[2,:]).squeeze().tolist()
+	op_vx = np.array(opz[3,:]).squeeze().tolist()
+	op_vy = np.array(opz[4,:]).squeeze().tolist()
+	op_omega = np.array(opz[5,:]).squeeze().tolist()
+
+	op_delta = np.array(opu[0,:]).squeeze().tolist()
+	op_acc = np.array(opu[1,:]).squeeze().tolist()
+
+	ax.plot(op_x,op_y,lw = 1,ls='-',color = 'red')
 
 ############# draw the safe range #############
 if draw_safe_region:
-	test_a_tau = drompc.get_obs_atau()
-	test_a_n = drompc.get_obs_an()
+	test_a_tau = nmpc.get_obs_atau()
+	test_a_n = nmpc.get_obs_an()
 
-	test_b_tau = drompc.get_obs_btau()
-	test_b_n = drompc.get_obs_bn()
+	test_b_tau = nmpc.get_obs_btau()
+	test_b_n = nmpc.get_obs_bn()
 
-	test_tau_0 = drompc.get_obs_tau0()
-	test_tau_1 = drompc.get_obs_tau1()
+	test_tau_0 = nmpc.get_obs_tau0()
+	test_tau_1 = nmpc.get_obs_tau1()
 
 
 	print("test a tau is:",test_a_tau)
@@ -364,71 +329,45 @@ if not test_debug:
 		# print("x0 :",x0)
 
 		current_xy = ca.DM(x0).T
-		dro_success,dro_z0,dro_control = drompc.get_Updated_local_path(current_xy,usedro=useDRCC)
-		if not dro_success:
+		nmpc_success,nmpc_z,nmpc_control = nmpc.get_Updated_local_path(current_xy)
+
+		nmpc_z = np.array(nmpc_z)
+		nmpc_control = np.array(nmpc_control)
+
+		# op_x = np.array(nmpc_z[0,:]).squeeze().tolist()
+		# op_y = np.array(nmpc_z[1,:]).squeeze().tolist()
+		# op_phi = np.array(nmpc_z[2,:]).squeeze().tolist()
+		# op_vx = np.array(nmpc_z[3,:]).squeeze().tolist()
+		# op_vy = np.array(nmpc_z[4,:]).squeeze().tolist()
+		# op_omega = np.array(nmpc_z[5,:]).squeeze().tolist()
+
+		# op_delta = np.array(nmpc_control[0,:]).squeeze().tolist()
+		# op_acc = np.array(nmpc_control[1,:]).squeeze().tolist()
+		if not nmpc_success:
 			break
 
-
-		dro_z0 = np.array(dro_z0).squeeze()
-		dro_control = np.array(dro_control)
-
-		lpv_pvx, lpv_pvy, lpv_pphi, lpv_pdelta = drompc.get_old_p_param()
-		lpv_pred_x = model.LPV_states(dro_z0,dro_control,lpv_pvx,lpv_pvy,lpv_pphi,lpv_pdelta,SAMPLING_TIME)
-
-		dro_phi = np.array(lpv_pred_x[2,:]).squeeze()
-
-		dx = np.cos(dro_phi)
-		dy = np.sin(dro_phi)
-		ref_xy = drompc.get_reference_path()
-		ref_phi = drompc.get_reference_phi()
+		op_xy = nmpc_z[:2,:]
+		ref_xy = nmpc.get_reference_path()
+		ref_phi = nmpc.get_reference_phi()
 		ref_x = np.array(ref_xy[0,:]).transpose()
 		ref_y = np.array(ref_xy[1,:]).transpose()
 
-		obs_detect = drompc.get_obs_detect()
+		obs_detect = nmpc.get_obs_detect()
 		if obs_detect is not False:
-			LB_value = drompc.get_LB()
-			obs_dis[obs_detect].append(np.linalg.norm(ref_xy[:2,1] - lpv_pred_x[:2,1]))
-			LB_dis[obs_detect].append(LB_value)
-
+			obs_dis[obs_detect].append(np.linalg.norm(ref_xy[:2,1] - op_xy[:2,1]))
 
 		ref_phi = np.array(ref_phi).transpose()
 		drex = np.cos(ref_phi)
 		drey = np.sin(ref_phi)
 
-		sim_x = model.sim_states(x0,dro_control,SAMPLING_TIME)
-
-		new_pvx = lpv_pred_x[3,1:]
-		new_pvy = lpv_pred_x[4,1:]
-		new_pphi = lpv_pred_x[2,1:]
-
-		drompc.update_new_p_param(new_pvx,new_pvy,new_pphi)
-
-		states[:,idt+1] = lpv_pred_x[:,1]
+		states[:,idt+1] = nmpc_z[:,1]
 		if add_disturbance:
 			disturbances = np.array([[np.random.uniform(low, high)] for low, high in disturbance_ranges]).squeeze()
 			states[:,idt+1] += disturbances
 
-		model_diff = sim_x - lpv_pred_x # save at t=10 as model error
-		model_diff = model_diff[:,:-1]
-		if not use_fixed_noise:
-			drompc.update_model_noise(model_diff)
-
-		tau0 = drompc.get_tau0_value()
-		if tau0 >= ob_center[0,1] and save_noise:
-			drompc.save_fixed_noise()
-			save_noise = False
-		model_diff = model_diff.mean(axis=1)
-
 		hstates2[:,0] = x0
-		for idh in range(drompc.horizon):
-			hstates2[:,idh+1] = lpv_pred_x[:,idh+1]
-
-		ex[idt+1] = model_diff[0]
-		ey[idt+1] = model_diff[1]
-		ephi[idt+1] = model_diff[2]
-		evx[idt+1] = model_diff[3]
-		evy[idt+1] = model_diff[4]
-		eomega[idt+1] = model_diff[5]
+		for idh in range(nmpc.horizon):
+			hstates2[:,idh+1] = nmpc_z[:,idh+1]
 
 		#################################################################################################
 
@@ -442,8 +381,8 @@ if not test_debug:
 		LnP.set_xdata(states[0,idt])
 		LnP.set_ydata(states[1,idt])
 
-		LnH.set_xdata(sim_x[0,:])
-		LnH.set_ydata(sim_x[1,:])
+		# LnH.set_xdata(nmpc_z[0,:])
+		# LnH.set_ydata(nmpc_z[1,:])
 
 		LnH2.set_xdata(hstates2[0,:])
 		LnH2.set_ydata(hstates2[1,:])
@@ -481,24 +420,16 @@ if not test_debug:
 	print("vy min max error:",np.amax(evy),np.amin(evy))
 	print("omega min max error:",np.amax(eomega),np.amin(eomega))
 
-	if dro_success:
+	if not nmpc_success:
 		for i in range(n_obs):
 
 			obs_disMean = np.mean(obs_dis[i])
 			obs_disMax = np.amax(obs_dis[i])
 			obs_disMin = np.amin(obs_dis[i])
 
-			lb_disMean = np.mean(LB_dis[i])
-			lb_disMax = np.amax(LB_dis[i])
-			lb_disMin = np.amin(LB_dis[i])
-
 			print("obstacle {} Mean distance : {:.5f}".format(i,obs_disMean))
 			print("obstacle {} Max distance : {:.5f}".format(i,obs_disMax))
 			print("obstacle {} Min distance : {:.5f}".format(i,obs_disMin))
-
-			print("obstacle {} Mean lb : {:.5f}".format(i,lb_disMean))
-			print("obstacle {} Max lb : {:.5f}".format(i,lb_disMax))
-			print("obstacle {} Min lb : {:.5f}".format(i,lb_disMin))
 
 	plt.ioff()
 
@@ -509,9 +440,9 @@ if save_figure:
 	# Save the figure in each format
 	for fmt in formats:
 		if useDRCC:
-			filename = os.path.join(script_dir,"outputFigure",f"dro_mpc.{fmt}")
+			filename = os.path.join(script_dir,"outputFigure",f"nmpc.{fmt}")
 		else:
-			filename = os.path.join(script_dir,"outputFigure",f"lpv_mpc.{fmt}")
+			filename = os.path.join(script_dir,"outputFigure",f"nmpc.{fmt}")
 
 		plt.savefig(filename,transparent=True, format=fmt)
 		print(f"Figure saved as {filename}")

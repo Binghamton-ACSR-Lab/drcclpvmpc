@@ -7,9 +7,10 @@ import casadi as ca
 
 class BicycleDynamics():
 
-	def __init__(self, lf, lr, mass, Iz, Cf, Cr, 
-				 Bf=None, Br=None, Df=None, Dr=None, Caf=None, Car=None, max_vx=None,
-					min_vx=None,max_vy = None, min_vy = None, max_omega = None,min_omega=None,**kwargs):
+	def __init__(self, lf, lr, mass, Iz, Cf, Cr,
+				Bf=None, Br=None, Df=None, Dr=None, Caf=None, Car=None, max_vx=None,
+				min_vx=None,max_vy = None, min_vy = None, max_omega = None,min_omega=None,
+				Cm1=None,Cm2=None,Cr0=None,Cd=None,approx=True,**kwargs):
 		"""	specify model params here
 		"""
 		self.lf = lf
@@ -37,6 +38,12 @@ class BicycleDynamics():
 
 		self.max_omega = max_omega
 		self.min_omega = min_omega
+  
+		self.Cm1 = Cm1
+		self.Cm2 = Cm2
+		self.Cr0 = Cr0
+		self.Cd = Cd
+		self.approx = approx
 
 		self.n_states = 6
 		self.n_inputs = 2
@@ -83,7 +90,7 @@ class BicycleDynamics():
 		dxdt[4] = (1/self.mass) * (Fry + Ffy*np.cos(steer)) - vx*omega
 		dxdt[5] = (1/self.Iz) * (Ffy*self.lf*np.cos(steer) - Fry*self.lr)
 		return dxdt
-	
+
 	def sim_next_state(self,x0,u0,dt):
 		steer = u0[0]
 		acc = u0[1]
@@ -131,8 +138,13 @@ class BicycleDynamics():
 		vy = x[4]
 		omega = x[5]
 		# rolling friction and drag are ignored
-		acc = u[1]
-		Frx = self.mass*acc
+		
+		if self.approx:
+			acc = u[1]
+			Frx = self.mass*acc
+		else:
+			pwm = u[1]
+			Frx = (self.Cm1-self.Cm2*vx)*pwm - self.Cr0 - self.Cd*(vx**2)
 
 		alphaf = steer - np.arctan2((self.lf*omega + vy), abs(vx))
 		alphar = np.arctan2((self.lr*omega - vy), abs(vx))
@@ -142,35 +154,62 @@ class BicycleDynamics():
 			return Ffy, Frx, Fry, alphaf, alphar
 		else:
 			return Ffy, Frx, Fry
-		
+
 	def LPV_next_state(self,x0,u0,p_vx,p_vy,p_phi,p_delta,dt):
 		x0 = ca.DM(x0)
 		u0 = ca.DM(u0)
 		# print("x0 :",x0)
 		# print("u0 :",u0)
-		A_i = ca.DM.zeros(6,6)
-		A_i[0,3] = ca.cos(p_phi)
-		A_i[0,4] = -ca.sin(p_phi)
-		A_i[1,3] = ca.sin(p_phi)
-		A_i[1,4] = ca.cos(p_phi)
-		A_i[2,5] = 1
-		A_i[3,4] = self.A34(p_vx,p_vy,p_phi,p_delta)
-		A_i[3,5] = self.A35(p_vx,p_vy,p_phi,p_delta)
-		A_i[4,4] = self.A44(p_vx,p_vy,p_phi,p_delta)
-		A_i[4,5] = self.A45(p_vx,p_vy,p_phi,p_delta)
-		A_i[5,4] = self.A54(p_vx,p_vy,p_phi,p_delta)
-		A_i[5,5] = self.A55(p_vx,p_vy,p_phi,p_delta)
+		if self.approx:
+			A_i = ca.DM.zeros(6,6)
+			A_i[0,3] = ca.cos(p_phi)
+			A_i[0,4] = -ca.sin(p_phi)
+			A_i[1,3] = ca.sin(p_phi)
+			A_i[1,4] = ca.cos(p_phi)
+			A_i[2,5] = 1
+			A_i[3,4] = self.A34(p_vx,p_vy,p_phi,p_delta)
+			A_i[3,5] = self.A35(p_vx,p_vy,p_phi,p_delta)
+			A_i[4,4] = self.A44(p_vx,p_vy,p_phi,p_delta)
+			A_i[4,5] = self.A45(p_vx,p_vy,p_phi,p_delta)
+			A_i[5,4] = self.A54(p_vx,p_vy,p_phi,p_delta)
+			A_i[5,5] = self.A55(p_vx,p_vy,p_phi,p_delta)
 
-		B_i = ca.DM.zeros(6,2)
-		B_i[3,1] = 1
-		B_i[3,0] = self.B30(p_vx,p_vy,p_phi,p_delta)
-		B_i[4,0] = self.B40(p_vx,p_vy,p_phi,p_delta)
-		B_i[5,0] = self.B50(p_vx,p_vy,p_phi,p_delta)
+			B_i = ca.DM.zeros(6,2)
+		
+			B_i[3,1] = 1
+			B_i[3,0] = self.B30(p_vx,p_vy,p_phi,p_delta)
+			B_i[4,0] = self.B40(p_vx,p_vy,p_phi,p_delta)
+			B_i[5,0] = self.B50(p_vx,p_vy,p_phi,p_delta)
+			A_i = ca.diag(ca.DM.ones(6)) + A_i*dt
+			B_i = B_i * dt
+			return A_i @ x0 + B_i @ u0
+		else:
+			A_i = ca.DM.zeros(6,6)
+			A_i[0,3] = ca.cos(p_phi)
+			A_i[0,4] = -ca.sin(p_phi)
+			A_i[1,3] = ca.sin(p_phi)
+			A_i[1,4] = ca.cos(p_phi)
+			A_i[2,5] = 1
+			A_i[3,3] = self.A33(p_vx,p_vy,p_phi,p_delta)
+			A_i[3,4] = self.A34(p_vx,p_vy,p_phi,p_delta)
+			A_i[3,5] = self.A35(p_vx,p_vy,p_phi,p_delta)
+			A_i[4,4] = self.A44(p_vx,p_vy,p_phi,p_delta)
+			A_i[4,5] = self.A45(p_vx,p_vy,p_phi,p_delta)
+			A_i[5,4] = self.A54(p_vx,p_vy,p_phi,p_delta)
+			A_i[5,5] = self.A55(p_vx,p_vy,p_phi,p_delta)
 
-		A_i = ca.diag(ca.DM.ones(6)) + A_i*dt
-		B_i = B_i * dt
+			B_i = ca.DM.zeros(6,2)
+			B_i[3,1] = self.B31(p_vx,p_vy,p_phi,p_delta)
+			B_i[3,0] = self.B30(p_vx,p_vy,p_phi,p_delta)
+			B_i[4,0] = self.B40(p_vx,p_vy,p_phi,p_delta)
+			B_i[5,0] = self.B50(p_vx,p_vy,p_phi,p_delta)
 
-		return A_i @ x0 + B_i @ u0
+			C_i = ca.DM.zeros(6,1)
+			C_i[3,0] = -self.Cr0/self.mass
+			A_i = ca.diag(ca.DM.ones(6)) + A_i*dt
+			B_i = B_i * dt
+			C_i = C_i * dt
+			return A_i @ x0 + B_i @ u0 + C_i
 	
 	def LPV_states(self,x0,u,p_vx,p_vy,p_phi,p_delta,dt):
 		x0_ = x0
@@ -201,6 +240,9 @@ class BicycleDynamics():
 
 	def gammar(self):
 		return self.lr*self.Car/self.Iz
+
+	def A33(self,p_vx,p_vy,p_phi,p_delta):
+		return -self.Cd*p_vx/self.mass
 
 	def A34(self,p_vx,p_vy,p_phi,p_delta):
 		betaf = self.betaf()
@@ -234,6 +276,9 @@ class BicycleDynamics():
 	def B30(self,p_vx,p_vy,p_phi,p_delta):
 		betaf = self.betaf()
 		return -betaf * ca.sin(p_delta)
+
+	def B31(self,p_vx,p_vy,p_phi,p_delta):
+		return (self.Cm1-self.Cm2*p_vx)/self.mass
 
 	def B40(self,p_vx,p_vy,p_phi,p_delta):
 		betaf = self.betaf()

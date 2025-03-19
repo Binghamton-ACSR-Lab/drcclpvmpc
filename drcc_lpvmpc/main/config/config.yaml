@@ -2,7 +2,7 @@ xylabel_fontsize : 20 # refer to the font size of xy label in the figure
 legend_fontsize : 19 # refer to the legend size in the figure
 xytick_size : 20 # refer to the tick size in the figure
 
-save_figure : true # set true if want to save figure, the figure saved in /outputFigure
+save_figure : false # set true if want to save figure, the figure saved in /outputFigure
 save_noise : false # set true if want to save the simulated noise data
 use_fixed_noise : true # set to false if want to generate new noise, by default, set it to true, the program will load a default noise file, set it to true will overwrite the data and could cause failure without tuning other parameters.
 
@@ -11,4 +11,4 @@ draw_safe_region : true # set to false if you don't want to see the safety regio
 test_debug : false # by defalt, set it to false, true value will active the debug section and deactive the main loop.
 
 useDRCC : true # when set to true, the mpc use drcc-lpvmpc, false will make the planner use lpvmpc only
-add_disturbance : false # set to true if you want to add random additive noise to the simulation to simulate other type of errors (e.g. localization, sensor errors, etc.), set to false will only make the model errors into consideration.
+add_disturbance : true # set to true if you want to add random additive noise to the simulation to simulate other type of errors (e.g. localization, sensor errors, etc.), set to false will only make the model errors into consideration.

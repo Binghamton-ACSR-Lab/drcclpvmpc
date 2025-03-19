@@ -5,7 +5,7 @@ import numpy as np
 __author__ = 'Shiming Fang'
 __email__ = 'sfang10@binghamton.edu'
 
-def ORCA():
+def ORCA(control='acc'):
 
 	lf = 0.029
 	lr = 0.033
@@ -47,6 +47,16 @@ def ORCA():
 
 	max_rate = [25*np.pi/180,1.5]
 	min_rate = [-25*np.pi/180,-1.5]
+	
+	if control == 'acc':
+		approx = True
+	else:
+		approx = False
+  
+	Cm1 = 0.287
+	Cm2 = 0.0545
+	Cr0 = 0.0518
+	Cd = 0.00035
 
 	params = {
 		'lf': lf,
@@ -80,6 +90,11 @@ def ORCA():
 		'max_omega': max_omega,
 		'min_omega': min_omega,
 		'max_rate' : max_rate,
-		'min_rate' : min_rate
+		'min_rate' : min_rate,
+		'Cm1': Cm1,
+		'Cm2': Cm2,
+		'Cr0': Cr0,
+		'Cd': Cd,
+		'approx':approx
 		}
 	return params
