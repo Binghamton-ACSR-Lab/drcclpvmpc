@@ -12,3 +12,4 @@ test_debug : false # by defalt, set it to false, true value will active the debu
 
 useDRCC : true # when set to true, the mpc use drcc-lpvmpc, false will make the planner use lpvmpc only
 add_disturbance : true # set to true if you want to add random additive noise to the simulation to simulate other type of errors (e.g. localization, sensor errors, etc.), set to false will only make the model errors into consideration.
+control_type : 'pwm'
