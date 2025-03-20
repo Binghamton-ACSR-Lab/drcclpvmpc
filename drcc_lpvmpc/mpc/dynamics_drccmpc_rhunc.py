@@ -195,11 +195,24 @@ class BicycleDynamicsDRCC:
 
         ############################### initialize weight matrix ###########################################
 
-        self.P = ca.DM.ones(1,self.horizon)*2
+        self.drcc_weight = ca.DM.zeros(1,self.horizon)
+        self.drcc_weight[0,:] = -0.6*ca.linspace(0,1,self.horizon).T
+        
+        self.drcc_weight = -2.0*ca.DM.ones(1,self.horizon)
+        
+        self.P = ca.DM.zeros(3,self.horizon)
+        # self.P[0,:] = 0.1*ca.linspace(1,10,self.horizon).T # sepecify x
+        # self.P[1,:] = 0.1*ca.linspace(1,10,self.horizon).T # sepecify y
+        
+        self.P[0,-1] = 20 # sepecify x
+        self.P[1,-1] = 20 # sepecify y
+        self.P[2,:] = 0*ca.linspace(1,10,self.horizon).T # sepecify phi
+        
+        self.Q = ca.DM.zeros(2,self.horizon)
+        self.Q[0,:] = 0.8*ca.linspace(1,10,self.horizon).T # sepecify DELTA
+        self.Q[1,:] = 0*ca.linspace(1,10,self.horizon).T # sepecify ACC/PWM
 
-        self.Q = ca.DM.ones(self.n_inputs,self.horizon) *0.1# weights of delta, acc
-
-        self.track_weight = ca.linspace(1,10,self.horizon+1).T
+        # self.track_weight = ca.linspace(1,10,self.horizon+1).T
 
         ################################# initialize noise matrix ###########################################
 
@@ -508,20 +521,21 @@ class BicycleDynamicsDRCC:
 
         Dn = ca.DM.zeros(self.n_states*self.horizon,1)
         for i in range(self.horizon):
-            Dn[i*self.n_states:i*self.n_states+2,0] = 1*self.P[0,i]
-            Dn[i*self.n_states+2,0] = 0.1*self.P[0,i]
+            Dn[i*self.n_states,0] = self.P[0,i]
+            Dn[i*self.n_states+1,0] = self.P[1,i]
+            Dn[i*self.n_states+2,0] = self.P[2,i]
 
-
-        Fn = ca.DM.ones(self.n_states+self.n_inputs*self.horizon,1)*self.Q[0,0]
-        for i in range(self.n_states):
-            Fn[i,0] = 0
+        Fn = ca.DM.zeros(self.n_states+self.n_inputs*self.horizon,1)
+        for i in range(self.horizon):
+            Fn[self.n_states+self.n_inputs*i,0] = self.Q[0,i]
+            Fn[self.n_states+self.n_inputs*i+1,0] = self.Q[1,i]
 
         # xn_obj = ca.dot(Dn*(Ln@z-ref_state),Dn*(Ln@z-ref_state)) + ca.dot(Fn*z,Fn*z)
         if self.approx:
-            xn_obj = ca.dot(Dn*(Ln@z-ref_state),Dn*(Ln@z-ref_state))
+            xn_obj = ca.dot(Dn*(Ln@z-ref_state),Dn*(Ln@z-ref_state)) + ca.dot(Fn*z,Fn*z)
         else:
 
-            xn_obj = ca.dot(Dn*(Ln@z+Hn@C_N-ref_state),Dn*(Ln@z+Hn@C_N-ref_state))
+            xn_obj = ca.dot(Dn*(Ln@z+Hn@C_N-ref_state),Dn*(Ln@z+Hn@C_N-ref_state)) + ca.dot(Fn*z,Fn*z)
             
 
         use_chance_covx = False # specify whether or not to use CvaR to convert the state bounds of vx
@@ -986,7 +1000,7 @@ class BicycleDynamicsDRCC:
                     opti.subject_to(sj >= 0)
                     opti.subject_to(opti.bounded(0,yj,1))
 
-                    cvar_cost += -0.18*(dq@q + gamma)
+                    cvar_cost += self.drcc_weight[0,i]*(dq@q + gamma)
 
 
         ################ back to the hard constraint ####################
