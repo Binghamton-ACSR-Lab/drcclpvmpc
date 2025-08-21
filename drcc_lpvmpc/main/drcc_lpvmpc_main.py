@@ -348,9 +348,9 @@ LB_dis = [[] for _ in range(n_obs)]
 
 if not test_debug:
 	disturbance_ranges = [
-    (-0.005, 0.005),  # Range for x
-    (-0.005, 0.005),      # Range for y
-    (-0.00005, 0.00005),      # Range for phi
+    (-0.01, 0.01),  # Range for x
+    (-0.01, 0.01),      # Range for y
+    (-0.0005, 0.0005),      # Range for phi
     (-0.00001, 0.00001),      # Range for vx
     (-0.000001, 0.000001),  # Range for vy
     (-0.00001, 0.00001)   # Range for omega

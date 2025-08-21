@@ -107,7 +107,7 @@ class BicycleDynamicsDRCC:
             end_pts = np.array(end_pts).transpose()
             # print("end pts:",end_pts)
             ab_tau = self.path_ptr_.xy_to_tau(end_pts)
-            print(ab_tau)
+            # print(ab_tau)
             if ab_tau[0,0] < ab_tau[0,1]:
                 ind = 0
                 indb = 1
@@ -123,7 +123,7 @@ class BicycleDynamicsDRCC:
             an = self.path_ptr_.f_xy_to_taun(ca.DM(end_pts[:,ind]),tau_a)
             bn = self.path_ptr_.f_xy_to_taun(ca.DM(end_pts[:,indb]),tau_b)
 
-            print("an, bn :",an,bn)
+            # print("an, bn :",an,bn)
 
             self.obs_cons_an.append(an)
             self.obs_cons_bn.append(bn)
@@ -218,7 +218,7 @@ class BicycleDynamicsDRCC:
 
         self.model_noise = Model_noise(self.horizon,fix_noise)
         self.noise_arr = self.model_noise.get_noise_arr()
-        print("noise arr :",self.noise_arr)
+        # print("noise arr :",self.noise_arr)
         # print("z his shape:",self.z_his.shape)
 
         # self.N_z = self.z_his.shape[0]
@@ -347,40 +347,74 @@ class BicycleDynamicsDRCC:
         b3 *= 1
         c3 *= -1e10
 
-        for j in range(self.obs_cons_tau0.shape[0]):
-            for i in range(self.horizon,-1,-1):
-                if self.tau_arr[0,i] <= self.obs_cons_tau0[j]:
-                    break
-                elif self.tau_arr[0,i] <= self.obs_cons_atau[j]:
-                    collid_n = self.obs_cons_an[j] * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
-                    shift_n = collid_n + self.obs_side_avoid[j]*0.1
-                    s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,self.obs_cons_phi_fre[j])
-                    self.update_safe_reference_track(i,collid_n,self.obs_cons_phi_fre[j])
+        # for j in range(self.obs_cons_tau0.shape[0]):
+        #     for i in range(self.horizon,-1,-1):
+        #         if self.tau_arr[0,i] <= self.obs_cons_tau0[j]:
+        #             break
+        #         elif self.tau_arr[0,i] <= self.obs_cons_atau[j]:
+        #             # collid_n = (self.obs_cons_an[j]) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
+        #             collid_n = (self.obs_cons_an[j]) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
+                    
+        #             collid_n = ca.linspace(self.n_arr[0,-1],collid_n,self.horizon+1).T
+                    
+        #             shift_n = collid_n + self.obs_side_avoid[j]*0.1
+        #             s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n[0,i],shift_n,(self.obs_cons_phi_fre[j]))
+        #             self.update_safe_reference_track(i,collid_n[0,i],self.obs_cons_phi_fre[j])
 
-                elif self.tau_arr[0,i] <= self.obs_cons_btau[j]:
-                    collid_n = self.obs_cons_bn[j]
-                    shift_n = collid_n + self.obs_side_avoid[j]*0.1
-                    s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,0)
-                    self.update_safe_reference_track(i,collid_n,0)
+        #         elif self.tau_arr[0,i] <= self.obs_cons_btau[j]:
+        #             collid_n = self.obs_cons_bn[j]
+        #             collid_n = ca.linspace(self.n_arr[0,-1],collid_n)
+        #             shift_n = collid_n + self.obs_side_avoid[j]*0.1
+        #             s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,0)
+        #             self.update_safe_reference_track(i,collid_n,0)
 
                 
-                elif self.tau_arr[0,i] >= self.obs_cons_btau[j] and self.tau_arr[0,i] <= self.obs_cons_tau1[j]:
-                    collid_n = self.obs_cons_bn[j] * (-self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) + self.obs_cons_s1[j])/(self.obs_cons_s1[j]-self.obs_cons_sb[j])
-                    shift_n = collid_n + self.obs_side_avoid[j]*0.1
-                    s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,-self.obs_cons_phi_freb[j])
-                    self.update_safe_reference_track(i,collid_n,self.obs_cons_phi_freb[j])
+        #         elif self.tau_arr[0,i] >= self.obs_cons_btau[j] and self.tau_arr[0,i] <= self.obs_cons_tau1[j]:
+        #             collid_n = (self.obs_cons_bn[j] + self.n_arr[0,i]) * (-self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) + self.obs_cons_s1[j])/(self.obs_cons_s1[j]-self.obs_cons_sb[j])
+        #             shift_n = collid_n + self.obs_side_avoid[j]*0.1
+        #             s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,(-self.obs_cons_phi_freb[j]))
+        #             self.update_safe_reference_track(i,collid_n,self.obs_cons_phi_freb[j])
 
-                else:
-                    continue
+        #         else:
+        #             continue
 
 
+        #         a3[0,i] = s_a3
+        #         b3[0,i] = s_b3
+        #         c3[0,i] = s_c3
+
+        #     if self.tau_arr[0,1] >= self.obs_cons_atau[j] and self.tau_arr[0,1] <= self.obs_cons_btau[j]:
+        #         self.obs_detect = j
+                
+        for j in range(self.obs_cons_tau0.shape[0]):
+            collid_n = 0
+            if self.tau_arr[0,-1] <= self.obs_cons_tau0[j]:
+                break
+            elif self.tau_arr[0,-1] <= self.obs_cons_atau[j]:
+                collid_n = (self.obs_cons_an[j]) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
+            elif self.tau_arr[0,-1] <= self.obs_cons_btau[j]:
+                collid_n = self.obs_cons_bn[j]
+            elif self.tau_arr[0,-1] >= self.obs_cons_btau[j] and self.tau_arr[0,-1] <= self.obs_cons_tau1[j]:
+                collid_n = (self.obs_cons_bn[j]) * (-self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) + self.obs_cons_s1[j])/(self.obs_cons_s1[j]-self.obs_cons_sb[j])
+            else:
+                continue
+                
+            phi_fre = ca.atan2(self.n_arr[0,0],collid_n)
+            collid_n = ca.linspace(self.n_arr[0,0],collid_n,self.horizon+1).T
+            
+                
+            for i in range(0,self.horizon+1):
+            
+                shift_n = collid_n[0,i] + self.obs_side_avoid[j]*0.1
+                s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n[0,i],shift_n,(phi_fre))
+                self.update_safe_reference_track(i,collid_n[0,i],phi_fre)
                 a3[0,i] = s_a3
                 b3[0,i] = s_b3
                 c3[0,i] = s_c3
-
+                
+            
             if self.tau_arr[0,1] >= self.obs_cons_atau[j] and self.tau_arr[0,1] <= self.obs_cons_btau[j]:
                 self.obs_detect = j
-
         # self.c3 = c3[0,-1]
 
 
@@ -1239,20 +1273,25 @@ class BicycleDynamicsDRCC:
             s00_arr[0,1:] = s00_arr[0,:-1]
             s00_arr[0,0] = s00
             tau_arr = self.path_ptr_.s_to_tau_lookup(s00_arr)
-            n_arr = ca.DM.zeros(1,self.horizon+1)
-            ref_pre_xy = self.path_ptr_.f_taun_to_xy(tau_arr,n_arr)
+            self.n_arr = ca.DM.zeros(1,self.horizon+1)
+            ref_pre_xy = self.path_ptr_.f_taun_to_xy(tau_arr,self.n_arr)
             self.ref_pre_x = ref_pre_xy[0,:]
             self.ref_pre_y = ref_pre_xy[1,:]
             self.ref_pre_phi = self.path_ptr_.f_phi(tau_arr)
             self.initialize = False
 
 
-        n_arr = ca.DM.zeros(1,self.horizon+1)
+        # n_arr = ca.DM.zeros(1,self.horizon+1)
+        n0 = self.path_ptr_.f_xy_to_taun(x0[:2],tau0)
+        # print("n0 :",n0)
+        self.n_arr = ca.linspace(n0,0,self.horizon+1).T
+        self.phi_fre = ca.atan2(n0,st-s0)
         # define reference xy
         # print("tau arr:",self.tau_arr)
         # print("tau max is:",self.path_ptr_.tau_max)
-        self.ref_xy = self.path_ptr_.f_taun_to_xy(self.tau_arr,n_arr)
-        self.reference_phi = self.path_ptr_.f_phi(self.tau_arr)
+        self.ref_xy = self.path_ptr_.f_taun_to_xy(self.tau_arr,self.n_arr)
+        self.reference_phi = self.path_ptr_.f_phi(self.tau_arr)+self.phi_fre
+        # print("reference phi :",self.reference_phi)
         self.reference_x = self.ref_xy[0,:]
         self.reference_y = self.ref_xy[1,:]
 
