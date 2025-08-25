@@ -269,6 +269,7 @@ class BicycleDynamicsDRCC:
             # self.p_phi = ca.DM(op_phi[1:]).T
 
             self.p_delta = ca.DM(op_delta).T
+            # print("refer phi:",self.reference_phi)
 
             return optimized_path[0],DM(op_z0),tuple((DM(op_delta),DM(op_acc)))
         else:
@@ -305,10 +306,10 @@ class BicycleDynamicsDRCC:
         self.reference_phi = np.unwrap(self.reference_phi)
 
         self.reference_phi = ca.DM(self.reference_phi)
-        if self.reference_phi[0,0] - self.ref_pre_phi[0,1] >= 2*ca.pi-0.5:
-            self.reference_phi -= 2*ca.pi
-        elif self.reference_phi[0,0] - self.ref_pre_phi[0,1] <= -2*ca.pi+0.5:
-            self.reference_phi += 2*ca.pi
+        # if self.reference_phi[0,0] - self.ref_pre_phi[0,1] >= 2*ca.pi-0.5:
+        #     self.reference_phi -= 2*ca.pi
+        # elif self.reference_phi[0,0] - self.ref_pre_phi[0,1] <= -2*ca.pi+0.5:
+        #     self.reference_phi += 2*ca.pi
 
 
         if getxy is False:
@@ -317,9 +318,7 @@ class BicycleDynamicsDRCC:
 
 
         # update previous reference phi, x, y
-        self.ref_pre_phi = self.reference_phi
-        self.ref_pre_x = self.reference_x
-        self.ref_pre_y = self.reference_y
+        
 
         # self.reference_vx = (xkpre - self.xkpre)/self.dt
         self.reference_vx = self.v_arr[:self.horizon+1,0].T
@@ -399,7 +398,7 @@ class BicycleDynamicsDRCC:
             else:
                 continue
                 
-            phi_fre = ca.atan2(self.n_arr[0,0],collid_n)
+            phi_fre = ca.atan2(self.n_arr[0,0] - collid_n, self.s_arr[0,-1]-self.s_arr[0,0])
             collid_n = ca.linspace(self.n_arr[0,0],collid_n,self.horizon+1).T
             
                 
@@ -415,6 +414,15 @@ class BicycleDynamicsDRCC:
             
             if self.tau_arr[0,1] >= self.obs_cons_atau[j] and self.tau_arr[0,1] <= self.obs_cons_btau[j]:
                 self.obs_detect = j
+                
+        if self.reference_phi[0,0] - self.ref_pre_phi[0,1] >= 2*ca.pi-0.5:
+            self.reference_phi -= 2*ca.pi
+        elif self.reference_phi[0,0] - self.ref_pre_phi[0,1] <= -2*ca.pi+0.5:
+            self.reference_phi += 2*ca.pi
+        
+        self.ref_pre_phi = self.reference_phi
+        self.ref_pre_x = self.reference_x
+        self.ref_pre_y = self.reference_y
         # self.c3 = c3[0,-1]
 
 
