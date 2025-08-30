@@ -4,14 +4,15 @@ setup.py
 drcc_lpvmpc.egg-info/PKG-INFO
 drcc_lpvmpc.egg-info/SOURCES.txt
 drcc_lpvmpc.egg-info/dependency_links.txt
-drcc_lpvmpc.egg-info/requires.txt
 drcc_lpvmpc.egg-info/top_level.txt
 drcc_lpvmpc/dynamics/__init__.py
 drcc_lpvmpc/dynamics/lpvdynamics.py
 drcc_lpvmpc/dynamics/model.py
 drcc_lpvmpc/main/drcc_lpvmpc_main.py
+drcc_lpvmpc/main/nmpc_main.py
 drcc_lpvmpc/mpc/__init__.py
 drcc_lpvmpc/mpc/dynamics_drccmpc_rhunc.py
+drcc_lpvmpc/mpc/dynamics_nmpc.py
 drcc_lpvmpc/mpc/model_noise.py
 drcc_lpvmpc/obstacles/__init__.py
 drcc_lpvmpc/obstacles/obstacle_shape.py
