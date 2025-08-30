@@ -29,6 +29,6 @@ You can refer to the mpc in mpc/dynamics_drccmpc_rhunc.py
 ## Modify the main file
 First, refer to the main/config/config.yaml
 
-Change useDRCC to False and then run the main file again, this will lead to control the vehicle with pure lpvmpc controller.
+Change useDRCC to False and then run the main file again, this will lead to control the vehicle with pure quasi-lpvmpc controller.
 Change add_disturbance to True and then run the main file again, this will add additive random noise to the vehicle location which simulate the disturbance from other factors e.g. localizations, sensors, etc.
 
