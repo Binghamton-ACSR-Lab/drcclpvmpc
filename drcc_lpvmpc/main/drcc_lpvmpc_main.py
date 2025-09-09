@@ -16,6 +16,25 @@ import yaml
 import drcc_lpvmpc.raceline_formulation.utils.utils as utils
 from drcc_lpvmpc.mpc.dynamics_drccmpc_rhunc import BicycleDynamicsDRCC
 
+def move_figure(fig, x, y):
+    """Place a Matplotlib figure window at (x, y) for Tk/Qt/WX backends."""
+    mng = fig.canvas.manager
+    # Try Tk
+    win = getattr(mng, "window", None)
+    if win is not None and hasattr(win, "wm_geometry"):
+        win.wm_geometry(f"+{int(x)}+{int(y)}")
+        return
+    # Try Qt
+    if win is not None and hasattr(win, "setGeometry"):
+        # keep current pixel size so you don't have to guess width/height
+        w_px, h_px = (fig.get_size_inches() * fig.dpi).astype(int)
+        win.setGeometry(int(x), int(y), int(w_px), int(h_px))
+        return
+    # Try wx
+    frame = getattr(mng, "frame", None)
+    if frame is not None and hasattr(frame, "SetPosition"):
+        frame.SetPosition((int(x), int(y)))
+
 SAMPLING_TIME = 0.02
 HORIZON = 6
 SIM_TIME = 15
@@ -138,7 +157,9 @@ LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5
 # LnH, = ax.plot(hstates[0], hstates[1], '-g', marker='o', markersize=1, lw=0.5)
 # LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5)
 # LnPd = ax.quiver(states[0,0], states[1,0],dstatex,dstatey,angles='xy', scale_units='xy', scale=10, color='r',width = 0.002)
-ax.figure.canvas.manager.window.wm_geometry("+1000+1")
+# ax.figure.canvas.manager.window.wm_geometry("+1000+1")
+# move_figure(ax.figure, 1000, 1)
+
 ax.figure.set_size_inches(15, 15)
 if plot_error:
 
@@ -439,16 +460,20 @@ if not test_debug:
 		LnR.set_xdata(ref_x)
 		LnR.set_ydata(ref_y)
 
-		LnP.set_xdata(states[0,idt])
-		LnP.set_ydata(states[1,idt])
+		LnP.set_xdata([states[0,idt]])
+		LnP.set_ydata([states[1,idt]])
 
 		LnH.set_xdata(sim_x[0,:])
 		LnH.set_ydata(sim_x[1,:])
 
 		LnH2.set_xdata(hstates2[0,:])
 		LnH2.set_ydata(hstates2[1,:])
-		ax.figure.canvas.draw()
-		plt.pause(Ts/100)
+		# ax.figure.canvas.draw()
+		# plt.pause(Ts/100)
+		fig = ax.figure
+		fig.canvas.draw_idle()
+		fig.canvas.flush_events()
+		plt.pause(max(Ts/10, 0.01))   # give the GUI a real chance to breathe
 
 		####################################################################################################
 		# visualize model error

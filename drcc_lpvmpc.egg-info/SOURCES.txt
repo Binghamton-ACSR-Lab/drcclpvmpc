@@ -4,6 +4,7 @@ setup.py
 drcc_lpvmpc.egg-info/PKG-INFO
 drcc_lpvmpc.egg-info/SOURCES.txt
 drcc_lpvmpc.egg-info/dependency_links.txt
+drcc_lpvmpc.egg-info/requires.txt
 drcc_lpvmpc.egg-info/top_level.txt
 drcc_lpvmpc/dynamics/__init__.py
 drcc_lpvmpc/dynamics/lpvdynamics.py

@@ -1,12 +1,19 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: drcc_lpvmpc
 Version: 0.0.0
 Summary: Linear Parameters Varying Distributional Robust Chance Constraint (DRCC) Optimization
 Author-email: Shiming Fang <sfang10@binghamton.edu>
 License: TODO
 Classifier: Programming Language :: Python :: 3
-Requires-Python: >=3.7
+Requires-Python: >=3.12
 Description-Content-Type: text/markdown
+Requires-Dist: numpy==1.26.4
+Requires-Dist: casadi==3.6.7
+Requires-Dist: matplotlib==3.10.6
+Requires-Dist: proxsuite
+Requires-Dist: osqp
+Requires-Dist: shapely
+Requires-Dist: pyyaml
 
 # Distributionally Robust Chance Constraint - Linear Parameter Varying Model predictive control (DRCC-LPVMPC)
 
@@ -39,6 +46,6 @@ You can refer to the mpc in mpc/dynamics_drccmpc_rhunc.py
 ## Modify the main file
 First, refer to the main/config/config.yaml
 
-Change useDRCC to False and then run the main file again, this will lead to control the vehicle with pure lpvmpc controller.
+Change useDRCC to False and then run the main file again, this will lead to control the vehicle with pure quasi-lpvmpc controller.
 Change add_disturbance to True and then run the main file again, this will add additive random noise to the vehicle location which simulate the disturbance from other factors e.g. localizations, sensors, etc.
 
