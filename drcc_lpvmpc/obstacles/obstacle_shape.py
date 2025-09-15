@@ -4,60 +4,60 @@ import numpy as np
 from shapely.geometry import Polygon
 from shapely.affinity import rotate, translate
 
-class Circle_obs:
-    def __init__(self,center_ls,side_avoid,radius,safe_range=0.02) -> None:
-        """
-        center_ls : a numpy array [2,n] where n represents the number of obstacles
-        radius : all share the same radius
-        side_avoid : side_avoid list, 1 => left avoidance, -1 => right avoidance
-        """
-        self.centers = []
-        for i in range(center_ls.shape[1]):
-            self.centers.append((Point(center_ls[0,i],center_ls[1,i]),side_avoid[i]))
+# class Circle_obs:
+#     def __init__(self,center_ls,side_avoid,radius,safe_range=0.02) -> None:
+#         """
+#         center_ls : a numpy array [2,n] where n represents the number of obstacles
+#         radius : all share the same radius
+#         side_avoid : side_avoid list, 1 => left avoidance, -1 => right avoidance
+#         """
+#         self.centers = []
+#         for i in range(center_ls.shape[1]):
+#             self.centers.append((Point(center_ls[0,i],center_ls[1,i]),side_avoid[i]))
 
-        self.radius = radius
-        self.safe_range = safe_range
+#         self.radius = radius
+#         self.safe_range = safe_range
 
-    def find_nearest_point(self, current_point):
-        assert(current_point.shape[0] == 2)
-        current_point = Point(current_point)
-        nearest_point_side_avoid = min(self.centers, key=lambda point: current_point.distance(point[0]))
-        return nearest_point_side_avoid
+#     def find_nearest_point(self, current_point):
+#         assert(current_point.shape[0] == 2)
+#         current_point = Point(current_point)
+#         nearest_point_side_avoid = min(self.centers, key=lambda point: current_point.distance(point[0]))
+#         return nearest_point_side_avoid
     
-    def check_points(self,points):
-        """
-        Check which points are within which circles.
-        points: [[a,b],...]
-        """
-        results = {Point(point): [] for _, point in enumerate(points)}
+#     def check_points(self,points):
+#         """
+#         Check which points are within which circles.
+#         points: [[a,b],...]
+#         """
+#         results = {Point(point): [] for _, point in enumerate(points)}
 
-        for center, side_avoid in self.centers:
-            circle = center.buffer(self.radius)
-            for _, point in enumerate(points):
-                if circle.contains(Point(point)):
-                    results[Point(point)].append([center,side_avoid])
+#         for center, side_avoid in self.centers:
+#             circle = center.buffer(self.radius)
+#             for _, point in enumerate(points):
+#                 if circle.contains(Point(point)):
+#                     results[Point(point)].append([center,side_avoid])
         
-        return results
+#         return results
     
-    def get_linear_function(self, current_point, direction, obs_center):
+#     def get_linear_function(self, current_point, direction, obs_center):
 
-        """
-        current_point : np array, denote as the reference point lies inside the circle
-        direction: radian float
-        obs_center: a np array class, denote as x1, y1
-        """
-        circle = obs_center.buffer(self.radius+self.safe_range)
-        line = LineString([(current_point.x,current_point.y),(current_point.x+10000*np.cos(direction),current_point.y+10000*np.sin(direction))])
-        intersection = circle.intersection(line) # denote as x2, y2
-        #  the slop of the tangent line
-        x1 = obs_center.x
-        y1 = obs_center.y
+#         """
+#         current_point : np array, denote as the reference point lies inside the circle
+#         direction: radian float
+#         obs_center: a np array class, denote as x1, y1
+#         """
+#         circle = obs_center.buffer(self.radius+self.safe_range)
+#         line = LineString([(current_point.x,current_point.y),(current_point.x+10000*np.cos(direction),current_point.y+10000*np.sin(direction))])
+#         intersection = circle.intersection(line) # denote as x2, y2
+#         #  the slop of the tangent line
+#         x1 = obs_center.x
+#         y1 = obs_center.y
 
-        x2 = intersection.xy[0][1]
-        y2 = intersection.xy[1][1]
-        # return a, b, c so as ax + by >= c
+#         x2 = intersection.xy[0][1]
+#         y2 = intersection.xy[1][1]
+#         # return a, b, c so as ax + by >= c
 
-        return x2-x1, y2-y1, (x2-x1)*x2 + (y2-y1)*y2
+#         return x2-x1, y2-y1, (x2-x1)*x2 + (y2-y1)*y2
     
 
 class Rectangle_obs:
@@ -104,6 +104,8 @@ class Rectangle_obs:
                 self.end_ls.append([longer_edges[1][0],longer_edges[1][1]])
 
             self.abc3.append(line)
+            
+        self.patches = []
 
         # print("rec abc3 :",self.abc3)
         # print("end ls:",self.end_ls)
@@ -153,8 +155,13 @@ class Rectangle_obs:
         for rectangle in self.rectangle_obs:
             x, y = rectangle.exterior.xy
 
-            ax.fill(x,y,color='black',zorder=1, alpha=1)
+            patch = ax.fill(x,y,color='black',zorder=1, alpha=1)[0]
+            self.patches.append(patch)
 
+    def remove_plot(self):
+        for patch in self.patches:
+            patch.remove()
+        self.patches.clear()
     def get_line_equation(self, p1, p2):
         """
         Calculate the line equation in the form ax + by - c = 0 for the line passing through points p1 and p2.

@@ -119,6 +119,7 @@ dstatex = np.cos(states[2,0])
 dstatey = np.sin(states[2,0])
 
 print('starting at ({:.3f},{:.3f})'.format(x_init[0], x_init[1]))
+plt.ion()
 
 # dynamic plot
 fig = track.plot(color='black', grid=False)
@@ -131,6 +132,10 @@ LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1,la
 LnP, = ax.plot(float(current_pos[0]), float(current_pos[1]), 'g', marker='o', alpha=0.5, markersize=5,label="current position")
 LnH, = ax.plot(hstates[0], hstates[1], '-g', marker='o', markersize=1, lw=0.5)
 LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5,label="Ground Truth Path")
+
+safeA, = ax.plot([],[],lw = 1,ls='--',color = 'black')
+safeB, = ax.plot([],[],lw = 1,ls='--',color = 'black')
+
 
 # LnS, = ax.plot(states[0,0], states[1,0], 'r', alpha=1,lw=2,label="Trajectory")
 # LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1)
@@ -190,15 +195,33 @@ if plot_error:
 
 ######################## define the obstacle center position##########################
 track_tau_max = track_ptr.get_max_tau()
+
+######################## forming numerical obstacle ##########################
 n_obs = 4
+n_pos = ca.DM(n_obs,n_steps + 1)
+n_pos[0,180:245] = ca.linspace(0.19, 0.05, 65).T
+n_pos[1,350:410] = ca.linspace(0.19, 0.08, 60).T
+n_pos[2,430:501] = ca.linspace(0.19, 0.08, 71).T
+n_pos[3,530:601] = ca.linspace(0.19, 0.08, 71).T
+
+n_pos[0,:180] = 0.19*ca.DM.ones(1,180)
+n_pos[1,:350] = 0.19*ca.DM.ones(1,350)
+n_pos[2,:430] = 0.19*ca.DM.ones(1,430)
+n_pos[3,:530] = 0.19*ca.DM.ones(1,530)
+
+n_pos[0,245:] = 0.05*ca.DM.ones(1,n_steps+1-245)
+n_pos[1,410:] = 0.08*ca.DM.ones(1,n_steps+1-410)
+n_pos[2,501:] = 0.08*ca.DM.ones(1,n_steps+1-501)
+n_pos[3,601:] = 0.08*ca.DM.ones(1,n_steps+1-601)
+
 ob_center = ca.DM([track_tau_max*8/20,track_tau_max*13/20,track_tau_max*16/20,track_tau_max*19/20]).T
 # ob_center = ca.DM([track_tau_max*8/20,track_tau_max*16/20,track_tau_max*19/20]).T
 side_avoid = np.array([-1,-1,-1,-1]) # 1:left avoid, -1:right avoid
 ob_centern = ca.DM.ones(1,n_obs) # smaller to get bigger height
-ob_centern[0,0] = 0.05
-ob_centern[0,1] = 0.08
-ob_centern[0,2] = 0.08
-ob_centern[0,3] = 0.08
+ob_centern[0,0] = 0.19
+ob_centern[0,1] = 0.19
+ob_centern[0,2] = 0.19
+ob_centern[0,3] = 0.19
 ob_centerxy = track_ptr.f_taun_to_xy(ob_center,ob_centern)
 ob_centerxy = np.array(ob_centerxy)
 ############ Form rectangle obs ##########
@@ -209,12 +232,62 @@ rec_obsxy = ob_centerxy.transpose().tolist()
 length = 0.09
 width = 0.24
 angles = np.array(ob_phi).squeeze().tolist()
-Rec_obs = Rectangle_obs(rec_obsxy,width,length,angles,side_avoid)
+pre_Rec_obs = Rectangle_obs(rec_obsxy,width,length,angles,side_avoid)
+end_ls = pre_Rec_obs.end_ls
+
+tau_ls = ca.DM(n_obs,2) # taua, taub
+s01_ls = ca.DM(n_obs,2) # s0, s1
+sab_ls = ca.DM(n_obs,2) # sab, sba
+# nab_ls = ca.DM(n_obs,2) # na, nb
+tau01_ls = ca.DM(n_obs,2) # tau0, tau1	
+s_max = track_ptr.get_max_length()
+
+for i,end in enumerate(end_ls):
+    
+	taua = track_ptr.xy_to_tau(end[0])
+	taub = track_ptr.xy_to_tau(end[1])
+	if taua > taub:
+		tau_ls[i,0] = taub
+		tau_ls[i,1] = taua
+		# nab_ls[i,0] = track_ptr.f_xy_to_taun(end[1],taub)
+		# nab_ls[i,1] = track_ptr.f_xy_to_taun(end[0],taua)
+	else:
+		tau_ls[i,0] = taua
+		tau_ls[i,1] = taub
+		# nab_ls[i,0] = track_ptr.f_xy_to_taun(end[0],taua)
+		# nab_ls[i,1] = track_ptr.f_xy_to_taun(end[1],taub)
+
+	sa = track_ptr.tau_to_s_lookup(tau_ls[i,0])
+	sb = track_ptr.tau_to_s_lookup(tau_ls[i,1])
+ 
+	sab_ls[i,0] = sa
+	sab_ls[i,1] = sb
+ 
+	s0 = sa - params['max_vx']*Ts*horizon*2
+	s1 = sb + params['max_vx']*Ts*horizon*2
+ 
+	s1 = min(s1,s_max-0.3)
+	s0 = max(s0,0.3)
+ 
+	tau01_ls[i,0] = track_ptr.s_to_tau_lookup(s0)
+	tau01_ls[i,1] = track_ptr.s_to_tau_lookup(s1)
+ 
+	s01_ls[i,0] = s0
+	s01_ls[i,1] = s1
+ 
+print("tau ls:",tau_ls)
+print("s01 ls:",s01_ls)
+print("sab ls:",sab_ls)
+print("tau01 ls:",tau01_ls)
+
+ 
+	
+
 #############################################################################################################################
 ######################################## END OF ENVIRONMENT SETUP ###########################################################
 #############################################################################################################################
 
-drompc = BicycleDynamicsDRCC(track_ptr,center_ptr,Rec_obs,current_pos,SAMPLING_TIME,horizon,track.track_width/2,use_fixed_noise,control_type)
+drompc = BicycleDynamicsDRCC(track_ptr,center_ptr,current_pos,SAMPLING_TIME,horizon,track.track_width/2,use_fixed_noise,control_type,useDRCC)
 
 #####################################################################################################################################
 ############################################################# test section ##########################################################
@@ -272,66 +345,66 @@ if test_debug:
 	# ax.plot(sim_x[0,:],sim_x[1,:],label="non linear path")
 
 ############# draw the safe range #############
-if draw_safe_region:
-	test_a_tau = drompc.get_obs_atau()
-	test_a_n = drompc.get_obs_an()
+# if draw_safe_region:
+# 	test_a_tau = drompc.get_obs_atau()
+# 	test_a_n = drompc.get_obs_an()
 
-	test_b_tau = drompc.get_obs_btau()
-	test_b_n = drompc.get_obs_bn()
+# 	test_b_tau = drompc.get_obs_btau()
+# 	test_b_n = drompc.get_obs_bn()
 
-	test_tau_0 = drompc.get_obs_tau0()
-	test_tau_1 = drompc.get_obs_tau1()
+# 	test_tau_0 = drompc.get_obs_tau0()
+# 	test_tau_1 = drompc.get_obs_tau1()
 
 
-	print("test a tau is:",test_a_tau)
-	print("test tau0 is:",test_tau_0)
+# 	print("test a tau is:",test_a_tau)
+# 	print("test tau0 is:",test_tau_0)
 
-	print("test b tau is:",test_b_tau)
-	print("test tau1 is:",test_tau_1)
+# 	print("test b tau is:",test_b_tau)
+# 	print("test tau1 is:",test_tau_1)
 
-	print("test an is :",test_a_n)
-	print("test bn is :",test_b_n)
+# 	print("test an is :",test_a_n)
+# 	print("test bn is :",test_b_n)
 
-	for i in range(test_a_tau.shape[0]):
-		if test_a_n[i] > 0:
-			safe_ataus = ca.linspace(test_tau_0[i],test_a_tau[i],100).T
+# 	for i in range(test_a_tau.shape[0]):
+# 		if test_a_n[i] > 0:
+# 			safe_ataus = ca.linspace(test_tau_0[i],test_a_tau[i],100).T
 
-			safe_ans = ca.linspace(0,test_a_n[i],100).T
+# 			safe_ans = ca.linspace(0,test_a_n[i],100).T
 
-			safe_axys = track_ptr.f_taun_to_xy(safe_ataus,safe_ans)
+# 			safe_axys = track_ptr.f_taun_to_xy(safe_ataus,safe_ans)
 
-			safe_btaus = ca.linspace(test_b_tau[i],test_tau_1[i],100).T
+# 			safe_btaus = ca.linspace(test_b_tau[i],test_tau_1[i],100).T
 
-			safe_bns = ca.linspace(test_b_n[i],0,100).T
+# 			safe_bns = ca.linspace(test_b_n[i],0,100).T
 
-			safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
+# 			safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
 
-		else:
-			safe_ataus = ca.linspace(test_a_tau[i],test_tau_0[i],100).T
+# 		else:
+# 			safe_ataus = ca.linspace(test_a_tau[i],test_tau_0[i],100).T
 
-			safe_ans = ca.linspace(test_a_n[i],0,100).T
+# 			safe_ans = ca.linspace(test_a_n[i],0,100).T
 
-			safe_axys = track_ptr.f_taun_to_xy(safe_ataus,safe_ans)
+# 			safe_axys = track_ptr.f_taun_to_xy(safe_ataus,safe_ans)
 
-			safe_btaus = ca.linspace(test_tau_1[i],test_b_tau[i],100).T
+# 			safe_btaus = ca.linspace(test_tau_1[i],test_b_tau[i],100).T
 
-			safe_bns = ca.linspace(0,test_b_n[i],100).T
+# 			safe_bns = ca.linspace(0,test_b_n[i],100).T
 
-			safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
+# 			safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
 
-		print("safe a :",safe_axys)
-		print("safe b :",safe_bxys)
+# 		print("safe a :",safe_axys)
+# 		print("safe b :",safe_bxys)
 
-		safe_axys = np.array(safe_axys)
-		safe_bxys = np.array(safe_bxys)
+# 		safe_axys = np.array(safe_axys)
+# 		safe_bxys = np.array(safe_bxys)
 
-		ax.plot(safe_axys[0,:],safe_axys[1,:],lw = 1,ls='--',color = 'black')
-		ax.plot(safe_bxys[0,:],safe_bxys[1,:],lw = 1,ls='--',color = 'black')
+# 		ax.plot(safe_axys[0,:],safe_axys[1,:],lw = 1,ls='--',color = 'black')
+# 		ax.plot(safe_bxys[0,:],safe_bxys[1,:],lw = 1,ls='--',color = 'black')
 ##############################################################################################################################
 ##############################################################################################################################
 
 ######################################### Plot rectangle ############################################
-Rec_obs.plot_rectangle(ax)
+pre_Rec_obs.plot_rectangle(ax)
 ax.set_xlabel('x [m]',fontsize = xylabel_fontsize)
 ax.set_ylabel('y [m]',fontsize = xylabel_fontsize)
 ax.legend(fontsize=legend_fontsize,borderpad=0.1,labelspacing=0.2, handlelength=1.4, handletextpad=0.37,loc='lower right')
@@ -340,7 +413,8 @@ ax.tick_params(axis='both',which='major',labelsize = xytick_size)
 save_z_idx = 0
 obs_dis = [[] for _ in range(n_obs)]
 LB_dis = [[] for _ in range(n_obs)]
-
+obs_detect = 0
+step_idx = 0
 
 ###############################################################################################################################
 ########################################## PLANNER START ######################################################################
@@ -348,23 +422,129 @@ LB_dis = [[] for _ in range(n_obs)]
 
 if not test_debug:
 	disturbance_ranges = [
-    (-0.01, 0.01),  # Range for x
-    (-0.01, 0.01),      # Range for y
+    (-0.005, 0.005),  # Range for x
+    (-0.005, 0.005),      # Range for y
     (-0.0005, 0.0005),      # Range for phi
     (-0.00001, 0.00001),      # Range for vx
     (-0.000001, 0.000001),  # Range for vy
     (-0.00001, 0.00001)   # Range for omega
 	]
-	plt.ion()
 	np.set_printoptions(threshold=np.inf)  # To print the entire array
 	np.set_printoptions(precision=17)
 	for idt in range(n_steps-horizon):
+		obs_passing = None
 
 		x0 = states[:,idt]
 		# print("x0 :",x0)
 
-		current_xy = ca.DM(x0).T
-		dro_success,dro_z0,dro_control = drompc.get_Updated_local_path(current_xy,usedro=useDRCC)
+		current_xy = ca.DM(x0)
+		print("current xy:",current_xy)
+  
+		############################## update obstacle position #####################################
+		current_tau = track_ptr.xy_to_tau(current_xy[:2])
+		current_s = track_ptr.tau_to_s_lookup(current_tau)
+		print("current_tau:", current_tau)
+		print("current_s:", current_s)
+  
+		ob_centern = ca.DM.ones(1,n_obs) # smaller to get bigger height
+		ob_centern[0,0] = n_pos[0,idt]
+		ob_centern[0,1] = n_pos[1,idt]
+		ob_centern[0,2] = n_pos[2,idt]
+		ob_centern[0,3] = n_pos[3,idt]
+		ob_centerxy = track_ptr.f_taun_to_xy(ob_center,ob_centern)
+		ob_centerxy = np.array(ob_centerxy)
+		rec_obsxy = ob_centerxy.transpose().tolist()
+		Rec_obs = Rectangle_obs(rec_obsxy,width,length,angles,side_avoid)
+		ab_ls = Rec_obs.end_ls
+
+		side_avoid_i = 1
+		rec_data = ca.DM.zeros(3,4) # rows: tau, n, s; cols: 0, a, b, 1
+		for i in range(n_obs):
+			if s01_ls[i,1] >= current_s:
+				obs_detect = i
+				
+				rec_data[0,0] = tau01_ls[i,0]
+				rec_data[0,1] = tau_ls[i,0]
+				rec_data[0,2] = tau_ls[i,1]
+				rec_data[0,3] = tau01_ls[i,1]
+				rec_data[1,0] = 0
+				axy = ab_ls[i][0]
+				bxy = ab_ls[i][1]
+				a_tau = track_ptr.xy_to_tau(axy)
+				b_tau = track_ptr.xy_to_tau(bxy)
+				if a_tau > b_tau:
+					rec_data[1,1] = track_ptr.f_xy_to_taun(bxy,b_tau)
+					rec_data[1,2] = track_ptr.f_xy_to_taun(axy,a_tau)
+				else:
+					rec_data[1,1] = track_ptr.f_xy_to_taun(axy,a_tau)
+					rec_data[1,2] = track_ptr.f_xy_to_taun(bxy,b_tau)
+
+				if current_tau >= tau_ls[i,0] and current_tau <= tau_ls[i,1]:
+					obs_passing = i
+				rec_data[1,3] = 0
+				rec_data[2,0] = s01_ls[i,0]
+				rec_data[2,1] = sab_ls[i,0]
+				rec_data[2,2] = sab_ls[i,1]
+				rec_data[2,3] = s01_ls[i,1]
+				side_avoid_i = side_avoid[i]
+				break
+		# print("rec data:",rec_data)
+		if side_avoid_i == -1 and rec_data[1,1] > 0 and rec_data[1,2] > 0:
+			obs_detect = n_obs
+		if side_avoid_i == 1 and rec_data[1,1] < 0 and rec_data[1,2] < 0:
+			obs_detect = n_obs
+		# print("obs detect:",obs_detect)
+
+		Rec_obs.plot_rectangle(ax)
+		pre_Rec_obs.remove_plot()
+		pre_Rec_obs = Rec_obs
+		#################################################################################################
+		#################################### update safety region #########################################
+		if obs_detect != n_obs and draw_safe_region:
+			if rec_data[1,1] > 0: # rows: tau, n, s; cols: 0, a, b, 1
+				safe_ataus = ca.linspace(rec_data[0,0],rec_data[0,1],10).T
+
+				safe_ans = ca.linspace(0,rec_data[1,1],10).T
+
+				safe_axys = track_ptr.f_taun_to_xy(safe_ataus,safe_ans)
+
+				safe_btaus = ca.linspace(rec_data[0,2],rec_data[0,3],10).T
+
+				safe_bns = ca.linspace(rec_data[1,2],0,10).T
+
+				safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
+
+			else:
+				safe_ataus = ca.linspace(rec_data[0,1],rec_data[0,0],10).T
+
+				safe_ans = ca.linspace(rec_data[1,1],0,10).T
+
+				safe_axys = track_ptr.f_taun_to_xy(safe_ataus,safe_ans)
+
+				safe_btaus = ca.linspace(rec_data[0,3],rec_data[0,2],10).T
+
+				safe_bns = ca.linspace(0,rec_data[1,2],10).T
+
+				safe_bxys = track_ptr.f_taun_to_xy(safe_btaus,safe_bns)
+
+			# print("safe a :",safe_axys)
+			# print("safe b :",safe_bxys)
+			safe_axys = np.array(safe_axys)
+			safe_bxys = np.array(safe_bxys)
+			safeA.set_xdata(safe_axys[0,:])
+			safeA.set_ydata(safe_axys[1,:])
+			safeB.set_xdata(safe_bxys[0,:])
+			safeB.set_ydata(safe_bxys[1,:])
+		else:
+			safeA.set_xdata([])
+			safeA.set_ydata([])
+			safeB.set_xdata([])
+			safeB.set_ydata([])
+		##########################################################################################################
+		if obs_detect != n_obs:
+			dro_success,dro_z0,dro_control = drompc.get_Updated_local_path(current_xy,rec_data,side_avoid=side_avoid_i,usedro=useDRCC)
+		else:
+			dro_success,dro_z0,dro_control = drompc.get_Updated_local_path(current_xy,usedro=False)
 		if not dro_success:
 			break
 
@@ -384,11 +564,11 @@ if not test_debug:
 		ref_x = np.array(ref_xy[0,:]).transpose()
 		ref_y = np.array(ref_xy[1,:]).transpose()
 
-		obs_detect = drompc.get_obs_detect()
-		if obs_detect is not False:
+		if obs_passing is not None and obs_passing < n_obs:
 			LB_value = drompc.get_LB()
-			obs_dis[obs_detect].append(np.linalg.norm(ref_xy[:2,1] - lpv_pred_x[:2,1]))
-			LB_dis[obs_detect].append(LB_value)
+			obs_dis[obs_passing].append(np.linalg.norm(ref_xy[:2,1] - lpv_pred_x[:2,1]))
+			LB_dis[obs_passing].append(LB_value)
+			print("obs detected at: {} step",idt)
 
 
 		ref_phi = np.array(ref_phi).transpose()
