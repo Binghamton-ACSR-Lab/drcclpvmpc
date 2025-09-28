@@ -119,14 +119,18 @@ dstatex = np.cos(states[2,0])
 dstatey = np.sin(states[2,0])
 
 print('starting at ({:.3f},{:.3f})'.format(x_init[0], x_init[1]))
-plt.ion()
+
 
 # dynamic plot
 fig = track.plot(color='black', grid=False)
+manager = fig.canvas.manager
+manager.window.wm_geometry("+1000+1")
+plt.ion()
 plt.plot(track.x_center, track.y_center, '--k', alpha=0.5, lw=0.5)
 utils.plot_path(track_ptr,type=1,labels="reference track")
 # utils.plot_path(centerline_ptr,type=1,labels="reference line")
 ax = plt.gca()
+
 LnS, = ax.plot(states[0,0], states[1,0], 'r', alpha=1,lw=2,label="Trajectory")
 LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1,label="Local Reference")
 LnP, = ax.plot(float(current_pos[0]), float(current_pos[1]), 'g', marker='o', alpha=0.5, markersize=5,label="current position")
@@ -144,7 +148,8 @@ safeB, = ax.plot([],[],lw = 1,ls='--',color = 'black')
 # LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5)
 # LnPd = ax.quiver(states[0,0], states[1,0],dstatex,dstatey,angles='xy', scale_units='xy', scale=10, color='r',width = 0.002)
 # ax.figure.canvas.manager.window.wm_geometry("+1000+1")
-ax.figure.set_size_inches(15, 15)
+
+ax.figure.set_size_inches(13, 13)
 if plot_error:
 
 	plt.figure()
