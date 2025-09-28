@@ -40,7 +40,7 @@ No random disturbances are added to the states of the vehicle:
 
 
 
-https://github.com/user-attachments/assets/1200b95b-1014-4bc3-9a8f-a9319e31df8d
+https://github.com/user-attachments/assets/9449b6bf-900a-439b-9218-0d70b47ad758
 
 
 ## Simulation use DRCC-LPVMPC (Extra Random Disturbances added)
