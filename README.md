@@ -21,6 +21,7 @@ pip install -e .
 ## Run drcc_lpvmpc
 
 ```
+cd drcc_lpvmpc
 cd main
 python drcc_lpvmpc_main.py
 ```
@@ -38,19 +39,13 @@ Simulation environment use ETHZ from [MPCC](https://github.com/alexliniger/MPCC)
 
 No random disturbances are added to the states of the vehicle:
 
-
-
 https://github.com/user-attachments/assets/9449b6bf-900a-439b-9218-0d70b47ad758
-
 
 ## Simulation use DRCC-LPVMPC (Extra Random Disturbances added)
 
 Random disturbances are added to the states of the vehicle at each steps:
 
-
-
 https://github.com/user-attachments/assets/7d6c714c-d19b-4825-ac05-5ea536957ad2
-
 
 ## ROS2 Package with Simulation in CARLA
 
