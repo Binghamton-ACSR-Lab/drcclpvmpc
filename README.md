@@ -22,10 +22,10 @@ pip install -e .
 ## Run drcc_lpvmpc
 
 ```
+cd drcc_lpvmpc
 cd main
 python drcc_lpvmpc_main.py
 ```
-
 
 ## Modify the main file
 
