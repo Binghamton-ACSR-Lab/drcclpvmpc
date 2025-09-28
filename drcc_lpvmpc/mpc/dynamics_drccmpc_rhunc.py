@@ -9,15 +9,16 @@ import os
 import time as tm
 
 from drcc_lpvmpc.mpc.model_noise import Model_noise
+from drcc_lpvmpc.raceline_formulation.racecar_path import RacecarPath
 
 
 
 class BicycleDynamicsDRCC:
-    def __init__(self,path_ptr,center_ptr,obs_map,current_state,dt,horizon,track_with,fix_noise,control_='acc') -> None:
+    def __init__(self,path_ptr:RacecarPath,center_ptr:RacecarPath,current_state,dt,horizon,track_width,fix_noise,control_='acc',usedrcc=True) -> None:
         self.initialize = True
         self.init_vxy = True
 
-        self.track_width_ = track_with
+        self.track_width_ = track_width
 
         script = os.path.dirname(__file__)
 
@@ -84,80 +85,32 @@ class BicycleDynamicsDRCC:
         self.path_ptr_ = path_ptr
         # self.bound_ptr_ = bound_ptr
         self.center_ptr_ = center_ptr
-        self.obs_map = obs_map
+        self.rec_obs = None
+        self.obs_cons_atau = None
+        self.obs_cons_btau = None
+        self.obs_cons_an = None
+        self.obs_cons_bn = None
+        self.obs_cons_sa = None
+        self.obs_cons_sb = None
+        self.obs_cons_s0 = None
+        self.obs_cons_s1 = None
+        self.obs_cons_tau0 = None
+        self.obs_cons_tau1 = None
+        self.obs_phi_fre = None
+        self.obs_phi_freb = None
+        # self.obs_map = obs_map
 
-        self.obs_side_avoid = self.obs_map.side_avoid
+        # self.obs_side_avoid = self.obs_map.side_avoid
 
         self.dt = dt
 
         self.horizon = horizon
         self.s_max = self.path_ptr_.get_max_length()
 
-        # ################################ for a rectangle obs ######################################
-
-        obs_end_ls = self.obs_map.end_ls
-        self.obs_cons_atau = []
-        self.obs_cons_btau = []
-
-        self.obs_cons_an = []
-        self.obs_cons_bn = []
-
-
-        for _, end_pts in enumerate(obs_end_ls):
-            end_pts = np.array(end_pts).transpose()
-            # print("end pts:",end_pts)
-            ab_tau = self.path_ptr_.xy_to_tau(end_pts)
-            # print(ab_tau)
-            if ab_tau[0,0] < ab_tau[0,1]:
-                ind = 0
-                indb = 1
-            else:
-                ind = 1
-                indb = 0
-            # print("min ab :",ind)
-            tau_a = ca.mmin(ab_tau)
-            tau_b = ca.mmax(ab_tau)
-            self.obs_cons_atau.append(tau_a)
-            self.obs_cons_btau.append(tau_b)
-
-            an = self.path_ptr_.f_xy_to_taun(ca.DM(end_pts[:,ind]),tau_a)
-            bn = self.path_ptr_.f_xy_to_taun(ca.DM(end_pts[:,indb]),tau_b)
-
-            # print("an, bn :",an,bn)
-
-            self.obs_cons_an.append(an)
-            self.obs_cons_bn.append(bn)
-
-
-        self.obs_cons_an = ca.vertcat(*self.obs_cons_an)
-        self.obs_cons_bn = ca.vertcat(*self.obs_cons_bn)
-
-        obs_safe_dis = ca.DM.ones(self.obs_cons_an.shape[0],1) * self.max_vx*self.dt*self.horizon*2
-        obs_safe_disb = ca.DM.ones(self.obs_cons_bn.shape[0],1) * self.max_vx*self.dt*self.horizon*2
-
-        self.obs_cons_phi_fre = ca.atan2(self.obs_cons_an,obs_safe_dis)
-        self.obs_cons_phi_freb = ca.atan2(self.obs_cons_bn,obs_safe_disb)
-
-        # print("self obs cons phi fre:",self.obs_cons_phi_fre)
-
-        # print("self obs cons a:",self.obs_cons_atau)
-        self.obs_cons_atau = ca.vertcat(*self.obs_cons_atau)
-        self.obs_cons_btau = ca.vertcat(*self.obs_cons_btau)
-
-        # print("self obs cons atau:",self.obs_cons_atau)
-        self.obs_cons_sa = self.path_ptr_.tau_to_s_lookup(self.obs_cons_atau)
-        self.obs_cons_s0 = self.obs_cons_sa - self.max_vx*self.dt*self.horizon*2
-
-        self.obs_cons_sb = self.path_ptr_.tau_to_s_lookup(self.obs_cons_btau)
-        self.obs_cons_s1 = self.obs_cons_sb + self.max_vx*self.dt*self.horizon*2
-        # print("obs cons s:",self.obs_cons_s0)
-        self.obs_cons_tau0 = self.path_ptr_.s_to_tau_lookup(self.obs_cons_s0)
-        self.obs_cons_tau1 = self.path_ptr_.s_to_tau_lookup(self.obs_cons_s1)
-        # print("self obs cons tau:",self.obs_cons_tau0)
-
         ############################### initialize reference state#####################################
         self.ref_xy = []
         self.v_arr = []
+        self.usedrcc = usedrcc
         getxy = self.get_ref_xy(current_state)
         self.current_state = current_state # x, y, phi, vx, vy, omega
 
@@ -194,6 +147,66 @@ class BicycleDynamicsDRCC:
         self.past_pdelta = self.p_delta
 
         ############################### initialize weight matrix ###########################################
+        if self.usedrcc:
+            self.drcc_weight = ca.DM.zeros(1,self.horizon)
+            self.drcc_weight[0,:] = -0.6*ca.linspace(0,1,self.horizon).T
+            
+            self.drcc_weight = -2.0*ca.DM.ones(1,self.horizon)
+            
+            self.P = ca.DM.zeros(3,self.horizon)
+            # self.P[0,:] = 0.1*ca.linspace(1,10,self.horizon).T # sepecify x
+            # self.P[1,:] = 0.1*ca.linspace(1,10,self.horizon).T # sepecify y
+            
+            self.P[0,-1] = 20 # sepecify x
+            self.P[1,-1] = 20 # sepecify y
+            self.P[2,:] = 0*ca.linspace(1,10,self.horizon).T # sepecify phi
+            
+            self.Q = ca.DM.zeros(2,self.horizon)
+            self.Q[0,:] = 0.8*ca.linspace(1,10,self.horizon).T # sepecify DELTA
+            self.Q[1,:] = 0*ca.linspace(1,10,self.horizon).T # sepecify ACC/PWM
+        else:
+            self.P = ca.DM.zeros(3,self.horizon)
+            # self.P[0,:] = ca.linspace(0,2,self.horizon).T # sepecify x
+            # self.P[1,:] = ca.linspace(0,2,self.horizon).T # sepecify y
+            # self.P[2,:] = ca.linspace(0,2,self.horizon).T # sepecify y
+            # self.P[0,:] = 0.1*ca.DM.ones(1,self.horizon).T # sepecify x
+            # self.P[1,:] = 0.1*ca.DM.ones(1,self.horizon).T # sepecify y
+            # self.P[2,:] = 0.1*ca.DM.ones(1,self.horizon).T # sepecify phi
+            
+            self.P[0,-1] = 20 # sepecify x
+            self.P[1,-1] = 20 # sepecify y
+            # self.P[2,:] = 0*ca.linspace(1,10,self.horizon).T # sepecify phi
+            
+            self.Q = ca.DM.zeros(2,self.horizon)
+            self.Q[0,:] = 0.1*ca.DM.ones(1,self.horizon).T # sepecify DELTA
+            self.Q[0,:] = 0.0*ca.linspace(1,10,self.horizon).T # sepecify DELTA
+            self.Q[1,:] = 0*ca.linspace(1,10,self.horizon).T # sepecify ACC/PWM
+
+        ################################# initialize noise matrix ###########################################
+
+        self.model_noise = Model_noise(self.horizon,fix_noise)
+        self.noise_arr = self.model_noise.get_noise_arr()
+
+        self.reach_end = False
+
+        self.start = tm.time()
+        self.end = tm.time()
+
+        self.tau0 = 0
+
+        self.sol_gamma = 0
+
+
+
+
+    def get_Updated_local_path(self,current_state,rec_obs = None,side_avoid = 1,usedro=True,print_=False):
+
+        """
+        return optimized_result, optimized_state, optimized_control,
+        rec_obs: only pass in the current detected rectangle obstacle
+        """
+        
+        ############################### initialize weight matrix ###########################################
 
         self.drcc_weight = ca.DM.zeros(1,self.horizon)
         self.drcc_weight[0,:] = -0.6*ca.linspace(0,1,self.horizon).T
@@ -211,39 +224,39 @@ class BicycleDynamicsDRCC:
         self.Q = ca.DM.zeros(2,self.horizon)
         self.Q[0,:] = 0.8*ca.linspace(1,10,self.horizon).T # sepecify DELTA
         self.Q[1,:] = 0*ca.linspace(1,10,self.horizon).T # sepecify ACC/PWM
+        self.rec_obs = rec_obs # rows: tau, n, s; cols: 0, a, b, 1
+        # ################################ for a rectangle obs ######################################
+        if self.rec_obs is not None:
+            self.obs_cons_tau0 = self.rec_obs[0,0]
+            self.obs_cons_atau = self.rec_obs[0,1]
+            self.obs_cons_btau = self.rec_obs[0,2]
+            self.obs_cons_tau1 = self.rec_obs[0,3]
+            self.obs_cons_an = self.rec_obs[1,1]
+            self.obs_cons_bn = self.rec_obs[1,2]
+            self.obs_cons_sa = self.rec_obs[2,1]
+            self.obs_cons_sb = self.rec_obs[2,2]
+            self.obs_cons_s0 = self.rec_obs[2,0]
+            self.obs_cons_s1 = self.rec_obs[2,3]
+            
+            self.obs_phi_fre = ca.atan2(self.obs_cons_an, self.obs_cons_sa - self.obs_cons_s0)
+            self.obs_phi_freb = ca.atan2(self.obs_cons_bn, self.obs_cons_s1 - self.obs_cons_sb)
+            
+        else:
+            self.obs_cons_atau = None
+            self.obs_cons_btau = None
+            self.obs_cons_an = None
+            self.obs_cons_bn = None
+            self.obs_cons_sa = None
+            self.obs_cons_sb = None
+            self.obs_cons_s0 = None
+            self.obs_cons_s1 = None
+            self.obs_cons_tau0 = None
+            self.obs_cons_tau1 = None
+            self.obs_phi_fre = None
+            self.obs_phi_freb = None
+            # print("self obs cons tau:",self.obs_cons_tau0)
 
-        # self.track_weight = ca.linspace(1,10,self.horizon+1).T
-
-        ################################# initialize noise matrix ###########################################
-
-        self.model_noise = Model_noise(self.horizon,fix_noise)
-        self.noise_arr = self.model_noise.get_noise_arr()
-        # print("noise arr :",self.noise_arr)
-        # print("z his shape:",self.z_his.shape)
-
-        # self.N_z = self.z_his.shape[0]
-        # print("self Nz is:",self.N_z)
-
-        self.reach_end = False
-
-        self.start = tm.time()
-        self.end = tm.time()
-
-        self.tau0 = 0
-
-        self.obs_detect = False
-        self.sol_gamma = 0
-
-
-
-
-    def get_Updated_local_path(self,current_state,usedro=True,print_=False):
-
-        """
-        return optimized_result, optimized_state, optimized_control
-        """
-
-        optimized_path = self.make_plan(current_state,usedrcc=usedro,print_=print_)
+        optimized_path = self.make_plan(current_state,side_avoid=side_avoid,usedrcc=usedro,print_=print_)
         self.end = tm.time()
 
 
@@ -280,10 +293,10 @@ class BicycleDynamicsDRCC:
             return optimized_path[0],DM(),tuple((DM(),DM()))
 
 
-    def make_plan(self,current_state,usedrcc=True,print_=False):
+    def make_plan(self,current_state,side_avoid = 1,usedrcc=True,print_=False):
         
         # reset the obs index
-        self.obs_detect = False
+        # self.obs_detect = False
         self.sol_gamma = 0
 
         casadi_option = {"print_time":print_}
@@ -347,73 +360,96 @@ class BicycleDynamicsDRCC:
         c3 *= -1e10
 
         # for j in range(self.obs_cons_tau0.shape[0]):
-        #     for i in range(self.horizon,-1,-1):
-        #         if self.tau_arr[0,i] <= self.obs_cons_tau0[j]:
-        #             break
-        #         elif self.tau_arr[0,i] <= self.obs_cons_atau[j]:
-        #             # collid_n = (self.obs_cons_an[j]) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
-        #             collid_n = (self.obs_cons_an[j]) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
-                    
-        #             collid_n = ca.linspace(self.n_arr[0,-1],collid_n,self.horizon+1).T
-                    
-        #             shift_n = collid_n + self.obs_side_avoid[j]*0.1
-        #             s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n[0,i],shift_n,(self.obs_cons_phi_fre[j]))
-        #             self.update_safe_reference_track(i,collid_n[0,i],self.obs_cons_phi_fre[j])
-
-        #         elif self.tau_arr[0,i] <= self.obs_cons_btau[j]:
-        #             collid_n = self.obs_cons_bn[j]
-        #             collid_n = ca.linspace(self.n_arr[0,-1],collid_n)
-        #             shift_n = collid_n + self.obs_side_avoid[j]*0.1
-        #             s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,0)
-        #             self.update_safe_reference_track(i,collid_n,0)
-
+        # if self.rec_obs is not None and not self.usedrcc and self.tau_arr[0,-1] > self.obs_cons_btau:
+        if self.rec_obs is not None and not self.usedrcc:
+            
+            # for i in range(self.horizon,-1,-1):
+            # if self.tau_arr[0,i] <= self.obs_cons_tau0:
+            #     break
+            i = 1
+            if self.tau_arr[0,i] >= self.obs_cons_tau0 and self.tau_arr[0,i] <= self.obs_cons_atau:
+                # collid_n = (self.obs_cons_an[j]) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
+                collid_n = (self.obs_cons_an) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) - self.obs_cons_s0)/(self.obs_cons_sa - self.obs_cons_s0)
                 
-        #         elif self.tau_arr[0,i] >= self.obs_cons_btau[j] and self.tau_arr[0,i] <= self.obs_cons_tau1[j]:
-        #             collid_n = (self.obs_cons_bn[j] + self.n_arr[0,i]) * (-self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) + self.obs_cons_s1[j])/(self.obs_cons_s1[j]-self.obs_cons_sb[j])
-        #             shift_n = collid_n + self.obs_side_avoid[j]*0.1
-        #             s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,(-self.obs_cons_phi_freb[j]))
-        #             self.update_safe_reference_track(i,collid_n,self.obs_cons_phi_freb[j])
+                # collid_n = ca.linspace(self.n_arr[0,-1],collid_n,self.horizon+1).T
+                collid_n -= side_avoid*0.03
 
-        #         else:
-        #             continue
+                shift_n = collid_n + side_avoid*0.1
+                s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,(self.obs_phi_fre))
+                # self.update_safe_reference_track(i,collid_n[0,i],self.obs_phi_fre)
+                a3[0,i] = s_a3
+                b3[0,i] = s_b3
+                c3[0,i] = s_c3
+
+            elif self.tau_arr[0,i] >= self.obs_cons_atau and self.tau_arr[0,i] <= self.obs_cons_btau:
+                # collid_n = max(self.obs_cons_bn,self.obs_cons_an)
+                # collid_n = self.obs_cons_bn + (self.obs_cons_bn - self.obs_cons_an)*(self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) - self.obs_cons_sa)/(self.obs_cons_sb - self.obs_cons_sa)
+                collid_n = self.obs_cons_bn
+                # collid_n -= side_avoid*0.03
+                
+                # print("collid n:",collid_n)
+                
+                # collid_n = ca.linspace(collid_n,self.obs_cons_an,self.horizon+1).T
+                shift_n = collid_n + side_avoid*0.1
+                s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,0)
+                # self.update_safe_reference_track(i,collid_n,0)
+                a3[0,i] = s_a3
+                b3[0,i] = s_b3
+                c3[0,i] = s_c3
+            
+            elif self.tau_arr[0,i] >= self.obs_cons_btau and self.tau_arr[0,i] <= self.obs_cons_tau1:
+                collid_n = (self.obs_cons_bn) * (-self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,i]) + self.obs_cons_s1)/(self.obs_cons_s1 - self.obs_cons_sb)
+                collid_n -= side_avoid*0.03
+                
+                
+                shift_n = collid_n + side_avoid*0.1
+                s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n,shift_n,(-self.obs_phi_freb))
+                # self.update_safe_reference_track(i,collid_n,self.obs_phi_freb)
+                a3[0,i] = s_a3
+                b3[0,i] = s_b3
+                c3[0,i] = s_c3
+            # else:
+            #     pass
 
 
-        #         a3[0,i] = s_a3
-        #         b3[0,i] = s_b3
-        #         c3[0,i] = s_c3
+            # a3[0,i] = s_a3
+            # b3[0,i] = s_b3
+            # c3[0,i] = s_c3
 
         #     if self.tau_arr[0,1] >= self.obs_cons_atau[j] and self.tau_arr[0,1] <= self.obs_cons_btau[j]:
         #         self.obs_detect = j
                 
-        for j in range(self.obs_cons_tau0.shape[0]):
+        # for j in range(self.obs_cons_tau0.shape[0]):
+        if self.rec_obs is not None:
             collid_n = 0
-            if self.tau_arr[0,-1] <= self.obs_cons_tau0[j]:
-                break
-            elif self.tau_arr[0,-1] <= self.obs_cons_atau[j]:
-                collid_n = (self.obs_cons_an[j]) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) - self.obs_cons_s0[j])/(self.obs_cons_sa[j]-self.obs_cons_s0[j])
-            elif self.tau_arr[0,-1] <= self.obs_cons_btau[j]:
-                collid_n = self.obs_cons_bn[j]
-            elif self.tau_arr[0,-1] >= self.obs_cons_btau[j] and self.tau_arr[0,-1] <= self.obs_cons_tau1[j]:
-                collid_n = (self.obs_cons_bn[j]) * (-self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) + self.obs_cons_s1[j])/(self.obs_cons_s1[j]-self.obs_cons_sb[j])
-            else:
-                continue
+            # if self.tau_arr[0,-1] <= self.obs_cons_tau0[j]:
+            #     break
+            if self.tau_arr[0,-1] >= self.obs_cons_tau0 and self.tau_arr[0,-1] <= self.obs_cons_atau:
+                collid_n = (self.obs_cons_an) * (self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) - self.obs_cons_s0)/(self.obs_cons_sa - self.obs_cons_s0)
+            elif self.tau_arr[0,-1] >= self.obs_cons_atau and self.tau_arr[0,-1] <= self.obs_cons_btau:
+                collid_n = self.obs_cons_bn
+            elif self.tau_arr[0,-1] >= self.obs_cons_btau and self.tau_arr[0,-1] <= self.obs_cons_tau1:
+                collid_n = (self.obs_cons_bn) * (-self.path_ptr_.tau_to_s_lookup(self.tau_arr[0,-1]) + self.obs_cons_s1)/(self.obs_cons_s1 - self.obs_cons_sb)
+
+            if collid_n != 0:
+                phi_fre = ca.atan2(self.n_arr[0,0] - collid_n, self.s_arr[0,-1]-self.s_arr[0,0])
+                collid_n = ca.linspace(self.n_arr[0,0],collid_n,self.horizon+1).T
                 
-            phi_fre = ca.atan2(self.n_arr[0,0] - collid_n, self.s_arr[0,-1]-self.s_arr[0,0])
-            collid_n = ca.linspace(self.n_arr[0,0],collid_n,self.horizon+1).T
-            
+                    
+                for i in range(0,self.horizon+1):
                 
-            for i in range(0,self.horizon+1):
-            
-                shift_n = collid_n[0,i] + self.obs_side_avoid[j]*0.1
-                s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n[0,i],shift_n,(phi_fre))
-                self.update_safe_reference_track(i,collid_n[0,i],phi_fre)
-                a3[0,i] = s_a3
-                b3[0,i] = s_b3
-                c3[0,i] = s_c3
+                    shift_n = collid_n[0,i] + side_avoid*0.1
+                    if self.usedrcc or self.tau_arr[0,0] > self.obs_cons_atau:
+                        s_a3,s_b3,s_c3 = self.get_safe_line_equation(self.tau_arr[0,i],collid_n[0,i],shift_n,(phi_fre))
+                        a3[0,i] = s_a3
+                        b3[0,i] = s_b3
+                        c3[0,i] = s_c3
+                    self.update_safe_reference_track(i,collid_n[0,i],phi_fre)
+                    
                 
             
-            if self.tau_arr[0,1] >= self.obs_cons_atau[j] and self.tau_arr[0,1] <= self.obs_cons_btau[j]:
-                self.obs_detect = j
+            # if self.tau_arr[0,1] >= self.obs_cons_atau[j] and self.tau_arr[0,1] <= self.obs_cons_btau[j]:
+            #     self.obs_detect = j
                 
         if self.reference_phi[0,0] - self.ref_pre_phi[0,1] >= 2*ca.pi-0.5:
             self.reference_phi -= 2*ca.pi
@@ -576,7 +612,6 @@ class BicycleDynamicsDRCC:
         if self.approx:
             xn_obj = ca.dot(Dn*(Ln@z-ref_state),Dn*(Ln@z-ref_state)) + ca.dot(Fn*z,Fn*z)
         else:
-
             xn_obj = ca.dot(Dn*(Ln@z+Hn@C_N-ref_state),Dn*(Ln@z+Hn@C_N-ref_state)) + ca.dot(Fn*z,Fn*z)
             
 
@@ -1560,8 +1595,8 @@ class BicycleDynamicsDRCC:
     def get_tau0_value(self):
         return self.tau0
     
-    def get_obs_detect(self):
-        return self.obs_detect
+    # def get_obs_detect(self):
+    #     return self.obs_detect
     
     def get_LB(self):
         return self.zeta + (1-self.epsilon)*self.sol_gamma

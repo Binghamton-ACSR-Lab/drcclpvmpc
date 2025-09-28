@@ -22,7 +22,7 @@ Requires-Dist: pyyaml
 It is recommended to create a new conda environment:
 
 ```
-conda create --name drcc_lpvmpc python=3.8.19
+conda create --name drcc_lpvmpc python=3.12.3
 conda activate drcc_lpvmpc
 ```
 
