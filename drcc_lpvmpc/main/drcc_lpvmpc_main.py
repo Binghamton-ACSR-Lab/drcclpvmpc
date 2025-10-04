@@ -126,16 +126,29 @@ fig = track.plot(color='black', grid=False)
 manager = fig.canvas.manager
 manager.window.wm_geometry("+1000+1")
 plt.ion()
+plt.subplots_adjust(
+    left=0.11,   # space from left edge of figure
+    right=0.998,  # space from right edge
+    bottom=0.062, # space from bottom
+    top=0.998,    # space from top
+    wspace=0.2, # horizontal space between subplots
+    hspace=0.2  # vertical space between subplots
+)
 plt.plot(track.x_center, track.y_center, '--k', alpha=0.5, lw=0.5)
-utils.plot_path(track_ptr,type=1,labels="reference track")
+utils.plot_path(track_ptr,type=1,labels="Reference raceline")
 # utils.plot_path(centerline_ptr,type=1,labels="reference line")
 ax = plt.gca()
 
 LnS, = ax.plot(states[0,0], states[1,0], 'r', alpha=1,lw=2,label="Trajectory")
-LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1,label="Local Reference")
-LnP, = ax.plot(float(current_pos[0]), float(current_pos[1]), 'g', marker='o', alpha=0.5, markersize=5,label="current position")
+# LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1,label="Local Reference")
+# LnP, = ax.plot(float(current_pos[0]), float(current_pos[1]), 'g', marker='o', alpha=0.5, markersize=5,label="current position")
+# LnH, = ax.plot(hstates[0], hstates[1], '-g', marker='o', markersize=1, lw=0.5)
+# LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5,label="Ground Truth Path")
+
+LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1)
+LnP, = ax.plot(float(current_pos[0]), float(current_pos[1]), 'g', marker='o', alpha=0.5, markersize=5)
 LnH, = ax.plot(hstates[0], hstates[1], '-g', marker='o', markersize=1, lw=0.5)
-LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5,label="Ground Truth Path")
+LnH2, = ax.plot(hstates2[0], hstates2[1], '-r', marker='o', markersize=1, lw=0.5)
 
 safeA, = ax.plot([],[],lw = 1,ls='--',color = 'black')
 safeB, = ax.plot([],[],lw = 1,ls='--',color = 'black')
@@ -149,7 +162,9 @@ safeB, = ax.plot([],[],lw = 1,ls='--',color = 'black')
 # LnPd = ax.quiver(states[0,0], states[1,0],dstatex,dstatey,angles='xy', scale_units='xy', scale=10, color='r',width = 0.002)
 # ax.figure.canvas.manager.window.wm_geometry("+1000+1")
 
-ax.figure.set_size_inches(13, 13)
+ax.figure.set_size_inches(12, 12)
+plt.tight_layout()
+
 if plot_error:
 
 	plt.figure()
@@ -421,6 +436,11 @@ LB_dis = [[] for _ in range(n_obs)]
 obs_detect = 0
 step_idx = 0
 
+safe_Ax = []
+safe_Ay = []
+safe_Bx = []
+safe_By = []
+
 ###############################################################################################################################
 ########################################## PLANNER START ######################################################################
 ###############################################################################################################################
@@ -505,6 +525,7 @@ if not test_debug:
 		pre_Rec_obs = Rec_obs
 		#################################################################################################
 		#################################### update safety region #########################################
+
 		if obs_detect != n_obs and draw_safe_region:
 			if rec_data[1,1] > 0: # rows: tau, n, s; cols: 0, a, b, 1
 				safe_ataus = ca.linspace(rec_data[0,0],rec_data[0,1],10).T
@@ -540,11 +561,26 @@ if not test_debug:
 			safeA.set_ydata(safe_axys[1,:])
 			safeB.set_xdata(safe_bxys[0,:])
 			safeB.set_ydata(safe_bxys[1,:])
+			safe_Ax = safe_axys[0,:]
+			safe_Ay = safe_axys[1,:]
+			safe_Bx = safe_bxys[0,:]
+			safe_By = safe_bxys[1,:]
 		else:
+			plt.plot(safe_Ax,safe_Ay,lw = 1,ls='--',color = 'black')
+			plt.plot(safe_Bx,safe_By,lw = 1,ls='--',color = 'black')
+			safe_Ax = []
+			safe_Ay = []
+			safe_Bx = []
+			safe_By = []
 			safeA.set_xdata([])
 			safeA.set_ydata([])
 			safeB.set_xdata([])
 			safeB.set_ydata([])
+		# else:
+		# 	safeA.set_xdata([])
+		# 	safeA.set_ydata([])
+		# 	safeB.set_xdata([])
+		# 	safeB.set_ydata([])
 		##########################################################################################################
 		if obs_detect != n_obs:
 			dro_success,dro_z0,dro_control = drompc.get_Updated_local_path(current_xy,rec_data,side_avoid=side_avoid_i,usedro=useDRCC)
