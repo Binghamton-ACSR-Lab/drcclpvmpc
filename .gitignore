@@ -1,0 +1,13 @@
+drcc_lpvmpc/dynamics/__pycache__/*
+drcc_lpvmpc/mpc/__pycache__/*
+drcc_lpvmpc/utils/__pycache__/*
+drcc_lpvmpc/obstacles/__pycache__/*
+drcc_lpvmpc/output/DynamicDRO_solver_output.txt
+drcc_lpvmpc/raceline_formulation/__pycache__/*
+drcc_lpvmpc/raceline_formulation/utils/__pycache__/*
+drcc_lpvmpc/tracks/__pycache__/*
+drcc_lpvmpc/tracks/__pycache__/*
+drcc_lpvmpc/tracks/utils/__pycache__/*
+drcc_lpvmpc/tracks/utils/__pycache__/*
+drcc_lpvmpc/vehicle/__pycache__/*
+drcc_lpvmpc/vehicle/__pycache__/*
