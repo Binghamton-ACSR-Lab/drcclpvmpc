@@ -136,10 +136,14 @@ plt.subplots_adjust(
 )
 plt.plot(track.x_center, track.y_center, '--k', alpha=0.5, lw=0.5)
 utils.plot_path(track_ptr,type=1,labels="Reference raceline")
+# utils.plot_path(track_ptr,type=1)
+
 # utils.plot_path(centerline_ptr,type=1,labels="reference line")
 ax = plt.gca()
 
 LnS, = ax.plot(states[0,0], states[1,0], 'r', alpha=1,lw=2,label="Trajectory")
+# LnS, = ax.plot(states[0,0], states[1,0], 'r', alpha=1,lw=2)
+
 # LnR, = ax.plot(states[0,0], states[1,0], '-b', marker='o', markersize=1, lw=1,label="Local Reference")
 # LnP, = ax.plot(float(current_pos[0]), float(current_pos[1]), 'g', marker='o', alpha=0.5, markersize=5,label="current position")
 # LnH, = ax.plot(hstates[0], hstates[1], '-g', marker='o', markersize=1, lw=0.5)
@@ -463,13 +467,13 @@ if not test_debug:
 		# print("x0 :",x0)
 
 		current_xy = ca.DM(x0)
-		print("current xy:",current_xy)
+		# print("current xy:",current_xy)
   
 		############################## update obstacle position #####################################
 		current_tau = track_ptr.xy_to_tau(current_xy[:2])
 		current_s = track_ptr.tau_to_s_lookup(current_tau)
-		print("current_tau:", current_tau)
-		print("current_s:", current_s)
+		# print("current_tau:", current_tau)
+		# print("current_s:", current_s)
   
 		ob_centern = ca.DM.ones(1,n_obs) # smaller to get bigger height
 		ob_centern[0,0] = n_pos[0,idt]
@@ -487,7 +491,7 @@ if not test_debug:
 		for i in range(n_obs):
 			if s01_ls[i,1] >= current_s:
 				obs_detect = i
-				
+				# print("obstacle detected:",i)
 				rec_data[0,0] = tau01_ls[i,0]
 				rec_data[0,1] = tau_ls[i,0]
 				rec_data[0,2] = tau_ls[i,1]
@@ -513,6 +517,8 @@ if not test_debug:
 				rec_data[2,3] = s01_ls[i,1]
 				side_avoid_i = side_avoid[i]
 				break
+			else:
+				obs_detect = n_obs
 		# print("rec data:",rec_data)
 		if side_avoid_i == -1 and rec_data[1,1] > 0 and rec_data[1,2] > 0:
 			obs_detect = n_obs
@@ -527,6 +533,7 @@ if not test_debug:
 		#################################### update safety region #########################################
 
 		if obs_detect != n_obs and draw_safe_region:
+			# print("rec data:",rec_data)
 			if rec_data[1,1] > 0: # rows: tau, n, s; cols: 0, a, b, 1
 				safe_ataus = ca.linspace(rec_data[0,0],rec_data[0,1],10).T
 
@@ -568,6 +575,8 @@ if not test_debug:
 		else:
 			plt.plot(safe_Ax,safe_Ay,lw = 1,ls='--',color = 'black')
 			plt.plot(safe_Bx,safe_By,lw = 1,ls='--',color = 'black')
+			# print("safe A x:",safe_Ax)
+   
 			safe_Ax = []
 			safe_Ay = []
 			safe_Bx = []
