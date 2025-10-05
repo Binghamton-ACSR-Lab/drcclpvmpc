@@ -12,8 +12,6 @@ This video provides supplementary material for the paper and demonstrates the pr
 
 https://github.com/user-attachments/assets/fd6a4548-4671-49ab-a2e4-55e06d203cdd
 
-This simulation is supporting Python3.12, please refer to ``python312`` branch if interested.
-
 ## Installation
 
 It is recommended to create a new virtual environment, we recommend user to use [Miniforge](https://github.com/conda-forge/miniforge) to create virtual environment:
