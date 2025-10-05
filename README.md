@@ -40,13 +40,13 @@ Simulation environment use ETHZ from [MPCC](https://github.com/alexliniger/MPCC)
 
 No random disturbances are added to the states of the vehicle:
 
-https://github.com/user-attachments/assets/9449b6bf-900a-439b-9218-0d70b47ad758
+https://github.com/user-attachments/assets/83a9d1f2-f537-4099-aca4-50c9e0fecd48
 
 ## Simulation use DRCC-LPVMPC (Extra Random Disturbances added)
 
 Random disturbances are added to the states of the vehicle at each steps:
 
-https://github.com/user-attachments/assets/7d6c714c-d19b-4825-ac05-5ea536957ad2
+https://github.com/user-attachments/assets/0c8794ac-ff24-434f-bd14-65213d8e666d
 
 ## ROS2 Package with Simulation in CARLA
 
