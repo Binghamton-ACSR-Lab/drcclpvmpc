@@ -1,4 +1,18 @@
-# Distributionally Robust Chance Constraint - Linear Parameter Varying Model predictive control (DRCC-LPVMPC)
+# DRCC-LPVMPC: Robust Data-Driven Control for Autonomous Driving and Obstacle Avoidance
+
+The DRCC-LPVMPC framework integrates distributionally robust chance constraints into a linear parameter-varying model predictive control (LPVMPC) formulation. By leveraging a data-driven ambiguity set constructed from empirical disturbances, the controller achieves real-time robust control under model and sensor uncertainties, ensuring safety and recursive feasibility in dynamic autonomous driving scenarios.
+This repository provides the source code for the control framework presented in: S. Fang, X. Li, C. Wu, and K. Yu (2025). “DRCC-LPVMPC: Robust Data-Driven Control for Autonomous Driving and Obstacle Avoidance.” Submitted to IEEE Transactions on Control Systems Technology, under review.
+
+## Supplementary Video
+This video provides supplementary material for the paper and demonstrates the proposed DRCC-LPVMPC framework through:
+
+- Numerical simulations: Static and moving obstacles, with and without disturbances, compared with LPVMPC.
+- CARLA simulations: Autonomous driving scenarios in high-fidelity CARLA with real-time perception in ROS 2.
+- Real-world experiments: Tests on a 1:5 scaled vehicle, compared with LPVMPC.
+
+https://github.com/user-attachments/assets/fd6a4548-4671-49ab-a2e4-55e06d203cdd
+
+This simulation is supporting Python3.12, please refer to ``python312`` branch if interested.
 
 ## Installation
 
@@ -39,7 +53,7 @@ Simulation environment use ETHZ from [MPCC](https://github.com/alexliniger/MPCC)
 
 No random disturbances are added to the states of the vehicle:
 
-https://github.com/user-attachments/assets/a049a74b-7515-4d86-8b6c-67ceede8b7ff
+https://github.com/user-attachments/assets/3fc0925b-4531-49d8-b646-8035060de683
 
 ## Simulation use DRCC-LPVMPC (Extra Random Disturbances added)
 
@@ -51,6 +65,3 @@ https://github.com/user-attachments/assets/d2341616-1c85-4921-866b-39a42b87f6d5
 
 [ROS2 package](https://github.com/Heliosfang/ros2_ws) is also provide with carla simulation demo.
 
-## Full Video Demo (Static obstacles and Moving obstacles with/without disturbance; CARLA simulation; Real Experiments)
-
-https://github.com/user-attachments/assets/fd6a4548-4671-49ab-a2e4-55e06d203cdd
