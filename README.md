@@ -52,7 +52,7 @@ Simulation environment use ETHZ from [MPCC](https://github.com/alexliniger/MPCC)
 
 No random disturbances are added to the states of the vehicle:
 
-https://github.com/user-attachments/assets/83a9d1f2-f537-4099-aca4-50c9e0fecd48
+https://github.com/user-attachments/assets/3fc0925b-4531-49d8-b646-8035060de683
 
 ## Simulation use DRCC-LPVMPC (Extra Random Disturbances added)
 
