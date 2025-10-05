@@ -62,7 +62,12 @@ https://github.com/user-attachments/assets/0c8794ac-ff24-434f-bd14-65213d8e666d
 
 ## ROS2 Package with Simulation in CARLA
 
-[ROS2 package](https://github.com/Heliosfang/ros2_ws) is also provide with carla simulation demo.
+[ROS2 package](https://github.com/Heliosfang/ros2_ws) is also provided with carla simulation demo. The repo provides a ros2 workspace of local controller which:
+
+- subscribe the positions of the obstacles
+- subscribe the odometry
+- use global path server
+- publish steering and duty cycle/longitudinal velocity as control to the vehicle
 
 
 
