@@ -50,3 +50,7 @@ https://github.com/user-attachments/assets/d2341616-1c85-4921-866b-39a42b87f6d5
 ## ROS2 Package with Simulation in CARLA
 
 [ROS2 package](https://github.com/Heliosfang/ros2_ws) is also provide with carla simulation demo.
+
+## Full Video Demo (Static obstacles and Moving obstacles with/without disturbance; CARLA simulation; Real Experiments)
+
+https://github.com/user-attachments/assets/fd6a4548-4671-49ab-a2e4-55e06d203cdd
