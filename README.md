@@ -10,7 +10,7 @@ This video provides supplementary material for the paper and demonstrates the pr
 - CARLA simulations: Autonomous driving scenarios in high-fidelity CARLA with real-time perception in ROS 2.
 - Real-world experiments: Tests on a 1:5 scaled vehicle, compared with LPVMPC.
 
-https://github.com/user-attachments/assets/fd6a4548-4671-49ab-a2e4-55e06d203cdd
+https://github.com/user-attachments/assets/68539a80-406a-4194-bdf6-6bdebb2fc6a5
 
 ## Installation
 
