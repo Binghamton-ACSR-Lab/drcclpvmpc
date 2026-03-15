@@ -2,6 +2,15 @@
 
 The DRCC-LPVMPC framework integrates distributionally robust chance constraints into a linear parameter-varying model predictive control (LPVMPC) formulation. By leveraging a data-driven ambiguity set constructed from empirical disturbances, the controller achieves real-time robust control under model and sensor uncertainties, ensuring safety and recursive feasibility in dynamic autonomous driving scenarios.
 This repository provides the source code for the control framework presented in: S. Fang, X. Li, C. Wu, and K. Yu (2025). “DRCC-LPVMPC: Robust Data-Driven Control for Autonomous Driving and Obstacle Avoidance.” Submitted to IEEE Transactions on Control Systems Technology, under review.
+A preprint of the submitted paper is available on arXiv:
+```
+@ARTICLE{FangTCST2026,
+  TITLE = "{DRCC-LPVMPC: Robust Data-Driven Control for Autonomous Driving and Obstacle Avoidance}",
+  AUTHOR = "Shiming Fang, Xilin Li, Changzhi Wu, and Kaiyan Yu",
+  JOURNAL = "arXiv preprint arXiv:XXXX.XXXXX",
+  YEAR = "2026"
+}
+```
 
 ## Supplementary Video
 This video provides supplementary material for the paper and demonstrates the proposed DRCC-LPVMPC framework through:
